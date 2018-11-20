@@ -1,3 +1,9 @@
+pycoind3
+=======
+pycoind3 is in development, please see the original pycoind for now.  
+https://github.com/ricmoo/pycoind  
+
+
 pycoind
 =======
 
