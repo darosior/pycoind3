@@ -30,12 +30,13 @@ from litecoin import Litecoin
 from mooncoin import Mooncoin
 from potcoin import Potcoin
 from zetacoin import Zetacoin
+from insacoin import Insacoin
 
 from coin import satoshi_per_coin
 
 __all__ = [
     'Bitcoin', 'Coinyecoin', 'Dogecoin', 'Feathercoin', 'Flappycoin',
-    'Litecoin', 'Mooncoin', 'Potcoin', 'Zetacoin',
+    'Litecoin', 'Mooncoin', 'Potcoin', 'Zetacoin', 'Insacoin',
     'Coins', 'get_coin',
     'satoshi_per_coin'
 ]
@@ -50,6 +51,7 @@ Coins = [
     Mooncoin,
     Potcoin,
     Zetacoin,
+    Insacoin
 ]
 
 
