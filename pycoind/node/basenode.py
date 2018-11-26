@@ -26,6 +26,7 @@ import random
 import socket
 import sys
 import time
+import binascii
 
 from . import connection
 from .. import coins, protocol, util
@@ -36,7 +37,7 @@ __all__ = [
     'AddressInUseException', 'DEV_PUBLIC_KEY', 'Node', 'StopNode',
 ]
 
-PUBLIC_KEY = '045e4dd6dab7e1db2c2754053adf610c02819f93b4fa79d2f3ba19964521b798096c9629226801994c2141a48d00b826973b7028cad5bbd1f219ac91c3a3e00ee5'.decode('hex')
+PUBLIC_KEY = binascii.unhexlify('045e4dd6dab7e1db2c2754053adf610c02819f93b4fa79d2f3ba19964521b798096c9629226801994c2141a48d00b826973b7028cad5bbd1f219ac91c3a3e00ee5')
 
 # Maximum number of address we will store in memory
 MAX_ADDRESSES = 2500

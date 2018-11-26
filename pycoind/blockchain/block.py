@@ -34,7 +34,7 @@ from .. import util
 __all__ = ['Database', 'InvalidBlockException']
 
 # A buffer of 32 chr(0) bytes
-_0 = buffer(chr(0) * 32)
+_0 = int('0').to_bytes(32, 'big')
 
 class InvalidBlockException(Exception): pass
 
