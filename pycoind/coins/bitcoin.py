@@ -51,7 +51,7 @@ class Bitcoin(coin.Coin):
     rpc_port = 8332
 
     genesis_version = 1
-    genesis_block_hash = '6fe28c0ab6f1b372c1a6a246ae63f74f931e8365e15a089c68d6190000000000'.decode('hex')
+    genesis_block_hash = '6fe28c0ab6f1b372c1a6a246ae63f74f931e8365e15a089c68d6190000000000'
     genesis_merkle_root = '3ba3edfd7a7b12b27ac72c3e67768f617fc81bc3888a51323a9fb8aa4b1e5e4a'.decode('hex')
     genesis_timestamp = 1231006505
     genesis_bits = 486604799

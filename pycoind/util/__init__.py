@@ -114,6 +114,20 @@ def hex_to_bin(data):
 def bin_to_hex(data):
     return data[::-1].encode('hex')
 
+# From https://github.com/darosior/bitcoineasy/blob/master/bitcoineasy/utils.py
+def sizeof(n):
+    """get the size in bytes of an integer, https://stackoverflow.com/questions/14329794/get-size-of-integer-in-python
+
+    Args:
+            n (int): the integer to get the size
+
+    Returns:
+        int: the size in bytes of the first parameter.
+    """
+    if n == 0:
+        return 1
+    return int(log(n, 256)) + 1
+
 
 # Protocl Version Helpers
 
@@ -211,4 +225,3 @@ def guess_block_height(coin, timeout = 5.0):
     # we copy, so lingering threads don't sneak new info in without a lock
     with lock:
         return result.copy()
-
