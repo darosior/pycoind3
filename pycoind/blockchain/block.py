@@ -44,7 +44,7 @@ class Block(object):
         keys = [n for (n, t, i) in database.Columns]
 
         self.__database = database
-        self.__data = dict(zip(keys, row))
+        self.__data = dict(list(zip(keys, row)))
 
     coin = property(lambda s: s.__database.coin)
 
@@ -292,7 +292,7 @@ class Database(database.Database):
 
         # ...then step down by twice the previous step...
         if offset > 0:
-            for i in xrange(1, int(math.log(2 * offset, 2))):
+            for i in range(1, int(math.log(2 * offset, 2))):
                 if offset <= 1: break
                 cursor.execute('select hash from blocks where mainchain = 1 and height = ?', (offset, ))
                 hashes.append(str(cursor.fetchone()[0]))

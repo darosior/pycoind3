@@ -49,7 +49,7 @@ OBJECT_TYPES = [OBJECT_TYPE_ERROR, OBJECT_TYPE_MSG_TX, OBJECT_TYPE_MSG_BLOCK]
 
 
 # All message formats and exceptions
-from messages import *
+from .messages import *
 
 # Data typs we pass into messages and exceptions
-from format import BlockHeader, InventoryVector, NetworkAddress, OutPoint, ParameterException, Txn, TxnIn, TxnOut
+from .format import BlockHeader, InventoryVector, NetworkAddress, OutPoint, ParameterException, Txn, TxnIn, TxnOut

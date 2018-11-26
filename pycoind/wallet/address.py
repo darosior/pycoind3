@@ -316,7 +316,7 @@ class Confirmation(object):
 def _normalize_utf(text):
     'Returns text encoded in UTF-8 using "Normalization Form C".'
 
-    return unicodedata.normalize('NFC', unicode(text)).encode('utf8')
+    return unicodedata.normalize('NFC', str(text)).encode('utf8')
 
 def _encrypt_xor(a, b, aes):
     'Returns encrypt(a ^ b).'

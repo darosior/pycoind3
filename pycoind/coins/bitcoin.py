@@ -22,7 +22,7 @@
 
 from .. import util
 
-import coin
+from . import coin
 
 # https://github.com/bitcoin/bitcoin
 

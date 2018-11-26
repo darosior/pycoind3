@@ -96,7 +96,7 @@ class Transaction(object):
         keys = [n for (n, t, i) in database.Columns]
 
         self._database = database
-        self._data = dict(zip(keys, row))
+        self._data = dict(list(zip(keys, row)))
 
         # cache for previous outputs' transactions, since it hits the database
         self._po_cache = dict()
@@ -125,7 +125,7 @@ class Transaction(object):
         self._transaction = None
 
     def cache_previous_outputs(self):
-        for i in xrange(0, len(self.inputs)):
+        for i in range(0, len(self.inputs)):
             self.previous_transaction(i)
 
     def previous_transaction(self, index):
@@ -241,7 +241,7 @@ class Database(database.Database):
         loc = (n, q % n)
         if loc not in self._connections:
 
-            locs = [(n, i) for i in xrange(0, n)]
+            locs = [(n, i) for i in range(0, n)]
 
             # doesn't exist; create the files backward
             if not os.path.isfile(self.get_filename(self.get_suffix(n, 0))):
@@ -294,7 +294,7 @@ class Database(database.Database):
                 cursor.execute(self.sql_insert, row)
 
             # (duplicates don't matter)
-            except sqlite3.IntegrityError, e:
+            except sqlite3.IntegrityError as e:
                 if e.message != _KEY_DUP:
                     raise e
 
@@ -302,7 +302,7 @@ class Database(database.Database):
             block_txns.append(Transaction(self, row, txn))
 
         # commit the transactions to the databases
-        for connection in connections.values():
+        for connection in list(connections.values()):
             connection.commit()
 
         # update the block with the transactions
@@ -315,7 +315,7 @@ class Database(database.Database):
     def _get(self, txck):
         ''
 
-        for connection in self._connections.values():
+        for connection in list(self._connections.values()):
             cursor = connection.cursor()
             cursor.execute(self.sql_select + ' where txck = ?', (txck, ))
             row = cursor.fetchone()
@@ -333,7 +333,7 @@ class Database(database.Database):
 
         # find all transactions across all databases within this range
         txns = [ ]
-        for connection in self._connections.values():
+        for connection in list(self._connections.values()):
             cursor = connection.cursor()
             cursor.execute(self.sql_select + ' where txck >= ? and txck < ?', (lo, hi))
             txns.extend((r[0], r) for r in cursor.fetchall())

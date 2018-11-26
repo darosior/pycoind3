@@ -1,4 +1,4 @@
-from __future__ import division
+
 
 import binascii
 import base64

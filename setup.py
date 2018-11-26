@@ -60,8 +60,8 @@ class Tests(Command):
         path = os.path.join(self.path, filename)
         self.announce("Running %s..." % filename, log.INFO)
         try:
-            execfile(path)
-        except Exception, e:
+            exec(compile(open(path).read(), path, 'exec'))
+        except Exception as e:
             self.announce('Test case failed: %s (%r)' % (filename, e), log.FATAL)
             raise e
 

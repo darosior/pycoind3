@@ -105,7 +105,7 @@ class Database(object):
             connection.commit()
 
         # this will happen every time except the first time
-        except sqlite3.OperationalError, e:
+        except sqlite3.OperationalError as e:
             if e.message != ('table metadata already exists'):
                 raise e
 

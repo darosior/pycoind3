@@ -32,7 +32,7 @@
 #
 # Written in 2005 by Peter Pearson and placed in the public domain.
 
-from __future__ import division
+
 
 from .six import print_
 from . import numbertheory

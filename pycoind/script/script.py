@@ -309,7 +309,7 @@ class Tokenizer(object):
 
         output = ''
         for (opcode, bytes, value) in self._tokens[start_index:]:
-            if filter and not filter(opcode, bytes, value):
+            if filter and not list(filter(opcode, bytes, value)):
                 continue
             output += bytes
         return output
@@ -482,7 +482,7 @@ class Script(object):
         '''Return True if all transaction inputs can be verified against their
            previous output.'''
 
-        for i in xrange(0, len(self._transaction.inputs)):
+        for i in range(0, len(self._transaction.inputs)):
 
             # ignore coinbase (generation transaction input)
             if self._transaction.index == 0 and i == 0: continue
@@ -519,7 +519,7 @@ class Script(object):
         stack = []
         altstack = []
 
-        for pc in xrange(0, len(tokens)):
+        for pc in range(0, len(tokens)):
             opcode = tokens[pc]
 
             #print "STACK:", (opcodes.OPCODE_NAMES[min(opcode, 255)], repr(tokens.get_value(pc)))
@@ -792,14 +792,14 @@ class Script(object):
                 # get all the public keys
                 count = stack.pop().value
                 if len(stack) < count: return False
-                public_keys = [stack.pop() for i in xrange(count)]
+                public_keys = [stack.pop() for i in range(count)]
 
                 if len(stack) < 1: return False
 
                 # get all the signautres
                 count = stack.pop().value
                 if len(stack) < count: return False
-                signatures = [stack.pop() for i in xrange(count)]
+                signatures = [stack.pop() for i in range(count)]
 
                 # due to a bug in the original client, discard an extra operand
                 if len(stack) < 1: return False

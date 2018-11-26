@@ -26,7 +26,7 @@
 raise NotImplemented()
 
 
-import coin
+from . import coin
 
 class ___coin(coin.Coin):
 

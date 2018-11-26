@@ -208,7 +208,7 @@ class ByteVector(object):
         return self.value
 
     def __long__(self):
-        return long(self.value)
+        return int(self.value)
 
     def __float__(self):
         return float(self.value)
@@ -248,7 +248,7 @@ class ByteVector(object):
             return cmp(self.vector, other)
         return cmp(self.value, other.value)
 
-    def __nonzero__(self):
+    def __bool__(self):
         return self.value != 0
 
 

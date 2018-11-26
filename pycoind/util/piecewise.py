@@ -111,7 +111,7 @@ def split_private_key(private_key, count = 2):
     secexp = string_to_number(private_key)
 
     # generate random secret exponents, less one
-    secexps = [randrange(curve.order) for i in xrange(count - 1)]
+    secexps = [randrange(curve.order) for i in range(count - 1)]
 
     # compute the missing secret exponent that will sum to the given key
     secexp_missing = (secexp - sum(secexps)) % curve.order
@@ -201,13 +201,13 @@ def partial_split_private_key(private_key, required, total):
         return [partial_encode_key(k, index) for k in keys]
 
     # total sets of required keys
-    keys = [get_keys(i) for i in xrange(0, total)]
+    keys = [get_keys(i) for i in range(0, total)]
 
     # create linearly independent immutable sets of keys
     groups = []
-    for i in xrange(0, total):
+    for i in range(0, total):
         group = []
-        for j in xrange(0, required):
+        for j in range(0, required):
             group.append(keys[(i + j) % total][j])
         groups.append(frozenset(group))
 
@@ -258,7 +258,7 @@ def partial_combine_private_keys(private_keys, ignore_errors = False):
         parts[index].add(private_key[8:])
 
     # find (if any) a complete key-set
-    for group in parts.values():
+    for group in list(parts.values()):
         if len(group) == required:
 
             # combine the private keys and wif encode it
@@ -295,7 +295,7 @@ def partial_split_qr_encode(private_keys):
 
     binary.sort()
     missing = len(binary)
-    for i in xrange(0, len(binary)):
+    for i in range(0, len(binary)):
         if binary[i][0] != i:
             missing = i
             break

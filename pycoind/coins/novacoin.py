@@ -21,7 +21,7 @@
 # THE SOFTWARE.
 
 
-import coin
+from . import coin
 
 from .litecoin import Litecoin
 

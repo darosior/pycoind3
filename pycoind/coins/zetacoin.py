@@ -23,7 +23,7 @@
 
 # Do not use this directly, it is meant as a template for adding new coins
 
-import coin
+from . import coin
 
 from .. import util
 

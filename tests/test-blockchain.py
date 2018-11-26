@@ -224,7 +224,7 @@ class TestBlockchain(unittest.TestCase):
             try:
                 database.add_header(self.get_header(self.block_1_invalid_target))
                 self.fail('An block header with no parent was added')
-            except pycoind.blockchain.block.InvalidBlockException, e:
+            except pycoind.blockchain.block.InvalidBlockException as e:
                 assert(e.message == 'block proof-of-work is greater than target')
 
         self.run_on_new_database(test)
@@ -235,7 +235,7 @@ class TestBlockchain(unittest.TestCase):
             try:
                 database.add_header(self.get_header(self.block_2_aa))
                 self.fail('An block header with no parent was added')
-            except pycoind.blockchain.block.InvalidBlockException, e:
+            except pycoind.blockchain.block.InvalidBlockException as e:
                 assert(e.message == 'previous block does not exist')
 
         self.run_on_new_database(test)
@@ -249,7 +249,7 @@ class TestBlockchain(unittest.TestCase):
             for child in tree:
                 if child not in edgemap:
                     edgemap[child] = set()
-                edgemap[child].update(tree[child].keys())
+                edgemap[child].update(list(tree[child].keys()))
                 populate_edgemap(tree[child])
         populate_edgemap(self.Chains)
 

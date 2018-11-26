@@ -22,13 +22,13 @@
 
 
 # import top levels
-import blockchain
-import coins
-import node
-import protocol
-import script
-import util
-import wallet
+from . import blockchain
+from . import coins
+from . import node
+from . import protocol
+from . import script
+from . import util
+from . import wallet
 
 
 # expose version

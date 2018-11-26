@@ -53,7 +53,7 @@ class DNSSeeder(object):
                     try:
                         with self._lock:
                             self._found.append((info[4][0], info[4][1]))
-                    except Exception, e:
+                    except Exception as e:
                         pass
 
                     # snooze for some time, so each dns_seed has a chance
@@ -63,7 +63,7 @@ class DNSSeeder(object):
                     #index += 1
                     #time.sleep(snooze)
 
-            except Exception, e:
+            except Exception as e:
                 pass
 
         for address in self._dns_seeds:

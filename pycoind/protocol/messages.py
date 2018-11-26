@@ -25,7 +25,7 @@ import hashlib
 import os
 import struct
 
-import format
+from . import format
 
 from .. import util
 

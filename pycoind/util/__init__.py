@@ -28,7 +28,7 @@ import os
 import struct
 import time
 import threading
-import urllib2
+import urllib.request, urllib.error, urllib.parse
 
 from . import base58
 from . import bootstrap
@@ -52,8 +52,8 @@ __all__ = [
 try:
     import scrypt
     _scrypt = scrypt.hash
-except Exception, e:
-    import pyscrypt
+except Exception as e:
+    from . import pyscrypt
     _scrypt = pyscrypt.hash
 
 
@@ -150,8 +150,8 @@ def default_data_directory():
 def fetch_url_json_path_int(url, path):
 
     def func():
-        request = urllib2.Request(url, headers = {'User-Agent': 'pycoind'})
-        payload = urllib2.urlopen(request).read()
+        request = urllib.request.Request(url, headers = {'User-Agent': 'pycoind'})
+        payload = urllib.request.urlopen(request).read()
 
         try:
             data = json.loads(payload)
@@ -163,8 +163,8 @@ def fetch_url_json_path_int(url, path):
                 else:
                     return None
             return int(data)
-        except Exception, e:
-            print e
+        except Exception as e:
+            print(e)
 
         return None
 
@@ -172,11 +172,11 @@ def fetch_url_json_path_int(url, path):
 
 def fetch_url_int(url):
     def func():
-        request = urllib2.Request(url, headers = {'User-Agent': 'pycoind'})
+        request = urllib.request.Request(url, headers = {'User-Agent': 'pycoind'})
         try:
-            return int(urllib2.urlopen(request).read())
-        except Exception, e:
-            print e
+            return int(urllib.request.urlopen(request).read())
+        except Exception as e:
+            print(e)
 
         return None
 
@@ -192,8 +192,8 @@ def guess_block_height(coin, timeout = 5.0):
             block_height = func()
             with lock:
                 result[name] = block_height
-        except Exception, e:
-            print e
+        except Exception as e:
+            print(e)
 
     threads = []
     for (name, func) in coin.block_height_guess:

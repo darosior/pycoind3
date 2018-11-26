@@ -39,7 +39,7 @@ def pbkdf2(password, salt, count, key_length, prf):
 
         if count > 1:
             U = [ c for c in U ]
-            for i in xrange(2, 1 + count):
+            for i in range(2, 1 + count):
                 block_xor(prf(password, ''.join(U)), 0, U, 0, len(U))
         U = ''.join(U)
 

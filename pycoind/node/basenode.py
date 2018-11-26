@@ -132,7 +132,7 @@ class BaseNode(asyncore.dispatcher, object):
                 self._address = self.getsockname()
 
         # port in use... Maybe already running.
-        except socket.error, e:
+        except socket.error as e:
             if e.errno == 48:
                 raise AddressInUseException()
             raise e
@@ -187,7 +187,7 @@ class BaseNode(asyncore.dispatcher, object):
         #if message.find('Traceback') == -1:
         #    message = message[:100]
 
-        print >>self._log, message
+        print(message, file=self._log)
 
     # Relaying
     # @TODO: not implemented yet and won't be made available until
@@ -239,7 +239,7 @@ class BaseNode(asyncore.dispatcher, object):
 
         try:
             asyncore.loop(5, map = self)
-        except StopNode, e:
+        except StopNode as e:
             pass
         finally:
             self.handle_close()
@@ -260,13 +260,13 @@ class BaseNode(asyncore.dispatcher, object):
         if not force and len(self) >= self._max_peers: return False
 
         # already a peer
-        if address in [n.address for n in self.values()]:
+        if address in [n.address for n in list(self.values())]:
             return False
 
         try:
             # asyncore keeps a reference in the map (ie. node = self)
             connection.Connection(address = address, node = self)
-        except Exception, e:
+        except Exception as e:
             self.log(str(e))
             return False
 
@@ -286,7 +286,7 @@ class BaseNode(asyncore.dispatcher, object):
     def peers(self):
         'List of connected peer nodes.'
 
-        return [n for n in self.values() if isinstance(n, connection.Connection)]
+        return [n for n in list(self.values()) if isinstance(n, connection.Connection)]
 
 
     # Alert management
@@ -482,7 +482,7 @@ class BaseNode(asyncore.dispatcher, object):
         peers = self.peers
 
         # if we need more peer connections, attempt to add some (up to 5 at a time)
-        for i in xrange(0, min(self._seek_peers - len(peers), 5)):
+        for i in range(0, min(self._seek_peers - len(peers), 5)):
             self.add_any_peer()
 
         # if we don't have many addresses ask any peer for some more
@@ -547,18 +547,18 @@ class BaseNode(asyncore.dispatcher, object):
             self._last_heartbeat = now;
             self.heartbeat()
 
-        return self._peers.items()
+        return list(self._peers.items())
 
     def values(self):
-        return self._peers.values()
+        return list(self._peers.values())
 
     def keys(self):
-        return self._peers.keys()
+        return list(self._peers.keys())
 
     def get(self, name, default = None):
         return self._peers.get(name, default)
 
-    def __nonzero__(self):
+    def __bool__(self):
         return True
 
     def __len__(self):

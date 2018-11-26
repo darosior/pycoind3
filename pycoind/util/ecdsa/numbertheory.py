@@ -9,13 +9,14 @@
 #   2008.11.14: Use pow( base, exponent, modulus ) for modular_exp.
 #               Make gcd and lcm accept arbitrarly many arguments.
 
-from __future__ import division
+
 
 from .six import print_, integer_types
 from .six.moves import reduce
 
 import math
 import types
+from functools import reduce
 
 
 class Error( Exception ):

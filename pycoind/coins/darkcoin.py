@@ -21,7 +21,7 @@
 # THE SOFTWARE.
 
 
-import coin
+from . import coin
 import util
 
 class Darkcoin(coin.Coin):

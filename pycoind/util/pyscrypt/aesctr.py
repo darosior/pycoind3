@@ -53,16 +53,16 @@ class AES(object):
         rounds = self.number_of_rounds[len(key)]
 
         # Encryption round keys
-        self._Ke = [[0] * 4 for i in xrange(rounds + 1)]
+        self._Ke = [[0] * 4 for i in range(rounds + 1)]
 
         round_key_count = (rounds + 1) * 4
         KC = len(key) / 4
 
         # Convert the key into ints
-        tk = [ struct.unpack('>i', key[i:i + 4])[0] for i in xrange(0, len(key), 4) ]
+        tk = [ struct.unpack('>i', key[i:i + 4])[0] for i in range(0, len(key), 4) ]
 
         # Copy values into round key arrays
-        for i in xrange(0, KC):
+        for i in range(0, KC):
             self._Ke[i / 4][i % 4] = tk[i]
 
         # Key expansion (fips-197 section 5.2)
@@ -79,12 +79,12 @@ class AES(object):
             rconpointer += 1
 
             if KC != 8:
-                for i in xrange(1, KC):
+                for i in range(1, KC):
                     tk[i] ^= tk[i - 1]
 
             # Key expansion for 256-bit keys is "slightly different" (fips-197)
             else:
-                for i in xrange(1, KC / 2):
+                for i in range(1, KC / 2):
                     tk[i] ^= tk[i - 1]
                 tt = tk[KC / 2 - 1]
 
@@ -93,7 +93,7 @@ class AES(object):
                               (self.S[(tt >> 16) & 0xFF] << 16) ^
                               (self.S[(tt >> 24) & 0xFF] << 24))
 
-                for i in xrange(KC / 2 + 1, KC):
+                for i in range(KC / 2 + 1, KC):
                     tk[i] ^= tk[i-1]
 
             # Copy values into round key arrays
@@ -113,11 +113,11 @@ class AES(object):
         a = [0, 0, 0, 0]
 
         # Convert plaintext to (ints ^ key)
-        t = [(compact_word(plaintext[4 * i:4 * i + 4]) ^ self._Ke[0][i]) for i in xrange(0, 4)]
+        t = [(compact_word(plaintext[4 * i:4 * i + 4]) ^ self._Ke[0][i]) for i in range(0, 4)]
 
         # Apply round transforms
-        for r in xrange(1, rounds):
-            for i in xrange(0, 4):
+        for r in range(1, rounds):
+            for i in range(0, 4):
                 a[i] = (self.T1[(t[ i          ] >> 24) & 0xFF] ^
                         self.T2[(t[(i + s1) % 4] >> 16) & 0xFF] ^
                         self.T3[(t[(i + s2) % 4] >>  8) & 0xFF] ^
@@ -127,7 +127,7 @@ class AES(object):
 
         # The last round is special
         result = [ ]
-        for i in xrange(0, 4):
+        for i in range(0, 4):
             tt = self._Ke[rounds][i]
             result.append((self.S[(t[ i          ] >> 24) & 0xFF] ^ (tt >> 24)) & 0xFF)
             result.append((self.S[(t[(i + s1) % 4] >> 16) & 0xFF] ^ (tt >> 16)) & 0xFF)
@@ -175,7 +175,7 @@ class Counter(object):
         self._next_value = next_value(self)
 
     def __call__(self):
-        return self._next_value.next()
+        return next(self._next_value)
 
 
 class AESCounterModeOfOperation(object):
@@ -212,7 +212,7 @@ if __name__ == '__main__':
             for text_length in [3, 16, 127, 128, 129, 1500]:
 
                 # Try 10 different values
-                for i in xrange(0, 10):
+                for i in range(0, 10):
                     key = os.urandom(key_size // 8)
                     plaintext = os.urandom(text_length)
 
@@ -223,11 +223,11 @@ if __name__ == '__main__':
                     enc = aes.encrypt(plaintext)
 
                     result = {True: "pass", False: "fail"}[kenc == enc]
-                    print "Test Encrypt: key_size=%d text_length=%d trial=%d result=%s" % (key_size, text_length, i, result)
+                    print("Test Encrypt: key_size=%d text_length=%d trial=%d result=%s" % (key_size, text_length, i, result))
 
                     aes = AESCounterModeOfOperation(key, counter = Counter(nbits = 128, initial_value = 0))
                     result = {True: "pass", False: "fail"}[plaintext == aes.decrypt(kenc)]
-                    print "Test Decrypt: key_size=%d text_length=%d trial=%d result=%s" % (key_size, text_length, i, result)
+                    print("Test Decrypt: key_size=%d text_length=%d trial=%d result=%s" % (key_size, text_length, i, result))
 
-    except Exception, e:
-        print e
+    except Exception as e:
+        print(e)

@@ -90,25 +90,25 @@ def verify(transaction):
         # do the inputs afford the outputs? (coinbase is an exception)
         fees = 0
         if transaction.index != 0:
-            sum_in = sum(po_value(transaction, i) for i in xrange(0, len(transaction.inputs)))
+            sum_in = sum(po_value(transaction, i) for i in range(0, len(transaction.inputs)))
             sum_out = sum(o.value for o in transaction.outputs)
             fees = sum_in - sum_out
             if fees < 0:
-                print sum_in, sum_out
-                print "FAIL(sum_in < sum_out)", transaction
+                print(sum_in, sum_out)
+                print("FAIL(sum_in < sum_out)", transaction)
                 return (False, [], 0)
 
         # are all inputs valid against their previous output?
         txio = script.Script(transaction)
         valid = txio.verify()
-        addresses = [txio.output_address(o) for o in xrange(0, txio.output_count)]
+        addresses = [txio.output_address(o) for o in range(0, txio.output_count)]
 
         if not valid:
-            print transaction
+            print(transaction)
 
         return (valid, addresses, fees)
-    except Exception, e:
-        print transaction, e
+    except Exception as e:
+        print(transaction, e)
         import traceback
         traceback.print_exc()
         raise e
@@ -130,7 +130,7 @@ class Database(database.Database):
 
         if processes is None or processes != 1:
             self._pool = multiprocessing.Pool(processes = processes, initializer = init_worker)
-            print "Spawning %d processes" % self._pool._processes
+            print("Spawning %d processes" % self._pool._processes)
         else:
             self._pool = None
 
@@ -187,7 +187,7 @@ class Database(database.Database):
         t1 = time.time()
 
         if self._pool is None:
-            results = map(verify, txns)
+            results = list(map(verify, txns))
         else:
             results = self._pool.map(verify, txns)
 
@@ -205,7 +205,7 @@ class Database(database.Database):
 
         t3 = time.time()
 
-        print "Processed %d transaction (cache=%fs, compute=%fs, update=%fs)" % (len(txns), t1 - t0, t2 - t1, t3 - t2)
+        print("Processed %d transaction (cache=%fs, compute=%fs, update=%fs)" % (len(txns), t1 - t0, t2 - t1, t3 - t2))
 
 
     def _update(self, block, results):
@@ -224,11 +224,11 @@ class Database(database.Database):
             # invalid transaction
             if not valid:
                 raise InvalidTransactionException('temporary')
-                print "invalid", txn
+                print("invalid", txn)
                 continue
 
             # remove each input's previous outputs
-            for i in xrange(0, len(txn.inputs)):
+            for i in range(0, len(txn.inputs)):
                 uock = txn._previous_uock(i)
                 if uock is None: continue
 
@@ -250,7 +250,7 @@ class Database(database.Database):
                     cursor.execute(self.sql_insert, (uock, address_hint))
 
                 # (duplicates don't matter)
-                except sqlite3.IntegrityError, e:
+                except sqlite3.IntegrityError as e:
                     if e.message != _KEY_DUP:
                         raise e
 

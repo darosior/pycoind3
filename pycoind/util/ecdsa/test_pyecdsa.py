@@ -1,4 +1,4 @@
-from __future__ import with_statement, division
+
 
 import unittest
 import os
@@ -153,7 +153,7 @@ class ECDSA(unittest.TestCase):
                              priv2.privkey.public_key.generator)
 
     def failIfPrivkeysEqual(self, priv1, priv2):
-        self.failIfEqual(priv1.privkey.secret_multiplier,
+        self.assertNotEqual(priv1.privkey.secret_multiplier,
                          priv2.privkey.secret_multiplier)
 
     def test_privkey_creation(self):

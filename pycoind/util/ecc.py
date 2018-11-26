@@ -87,7 +87,7 @@ def verify(data, public_key, signature):
     key = ecdsa.VerifyingKey.from_string(public_key[1:], ecdsa.SECP256k1)
     try:
         return key.verify_digest(signature, sha256d(data), sigdecode = sigdecode_der)
-    except ecdsa.BadSignatureError, e:
+    except ecdsa.BadSignatureError as e:
         return False
 
 from .ecdsa.util import number_to_string, string_to_number

@@ -21,7 +21,7 @@
 # THE SOFTWARE.
 
 
-import coin
+from . import coin
 
 class Namecoin(coin.Coin):
     name = "namecoin"

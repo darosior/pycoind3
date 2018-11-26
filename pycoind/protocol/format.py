@@ -81,14 +81,14 @@ class _AutoPopulateAndRegister(type):
 #import time
 #profile = dict(count = 0)
 
-class CompoundType(object):
+class CompoundType(object, metaclass=_AutoPopulateAndRegister):
     properties = []
 
     def __init__(self, *args, **kw):
         keys = [k for (k, t) in self.properties]
 
         # convert the positional arguments into keywords
-        params = dict(zip(keys, args))
+        params = dict(list(zip(keys, args)))
 
         # did we specify a parameter both positionally and as a keyword?
         for k in kw:
@@ -120,8 +120,7 @@ class CompoundType(object):
         self._properties = params
 
 
-    __metaclass__ = _AutoPopulateAndRegister
-
+    
     def binary(self):
         'Returns the binary representation of the message.'
         return "".join(vt.binary(self._properties[key]) for (key, vt) in self.properties)
@@ -137,7 +136,7 @@ class CompoundType(object):
             try:
                 (length, kw[key]) = vt.parse(data[offset:])
                 offset += length
-            except Exception, e:
+            except Exception as e:
                 raise ParameterException(key, data[offset:], vt)
 
         #dt = time.time() - t0
@@ -225,8 +224,8 @@ class FormatTypeOptional(FormatType):
             value = self._child.validate(obj)
             if value is not None:
                 return value
-        except Exception, e:
-            print e
+        except Exception as e:
+            print(e)
 
         return self._default
 
@@ -236,7 +235,7 @@ class FormatTypeOptional(FormatType):
     def parse(self, data):
         try:
             return self._child.parse(data)
-        except Exception, e:
+        except Exception as e:
             pass
         return (0, self._default)
 
@@ -276,8 +275,8 @@ class FormatTypeNumber(FormatType):
         H = (0, 65536),
         i = (-2147483648, 2147483648),
         I = (0, 4294967296),
-        q = (-9223372036854775808L, 9223372036854775808L),
-        Q = (0, 18446744073709551616L)
+        q = (-9223372036854775808, 9223372036854775808),
+        Q = (0, 18446744073709551616)
     )
 
     def validate(self, obj):
@@ -285,7 +284,7 @@ class FormatTypeNumber(FormatType):
         # check type
         if not (self._allow_float and isinstance(obj, float)):
             if self._format[1] in 'qQ':
-                if not isinstance(obj, (int, long)):
+                if not isinstance(obj, int):
                     return None
             elif not isinstance(obj, int):
                 return None
@@ -349,8 +348,8 @@ class FormatTypeIPAddress(FormatType):
 
         # convert each group to its value
         try:
-            groups = map(int, obj.split('.'))
-        except ValueError, e:
+            groups = list(map(int, obj.split('.')))
+        except ValueError as e:
             return None
 
         # too many or not enough groups

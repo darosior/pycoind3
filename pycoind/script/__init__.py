@@ -21,7 +21,7 @@
 # THE SOFTWARE.
 
 
-import opcodes
+from . import opcodes
 
 from .bytevector import ByteVector
 from .script import Script, Tokenizer
