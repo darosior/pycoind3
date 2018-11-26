@@ -22,8 +22,8 @@
 
 
 from . import coin
-
 from .litecoin import Litecoin
+import binascii
 
 # https://github.com/realcoinyecoin/coinyecoin
 
@@ -52,8 +52,8 @@ class Coinyecoin(Litecoin):
     rpc_port = 41337
 
     # Genesis block (hashes are little endiand; ie. 0's should be at the end)
-    genesis_block_hash = ('3fca9bb899bf64824aba73b2c1dbe6343556bfcca537d596b9efb45bf8933333').decode('hex')
-    genesis_merkle_root = ('6ee5b04be0981f246b045c38595b904e08db50f653d89bd166341272d91981ad').decode('hex')
+    genesis_block_hash = binascii.unhexlify('3fca9bb899bf64824aba73b2c1dbe6343556bfcca537d596b9efb45bf8933333')
+    genesis_merkle_root = binascii.unhexlify('6ee5b04be0981f246b045c38595b904e08db50f653d89bd166341272d91981ad')
     genesis_timestamp = 1369199888
     genesis_nonce = 11288888
 
@@ -63,7 +63,7 @@ class Coinyecoin(Litecoin):
 
     script_address = chr(22)   #??
 
-    alert_public_key = '040184710fa689ad5023690c80f3a49c8f13f8d45b8c857fbcbc8bc4a8e4d3eb4b10f4d4604fa08dce601aaf0f470216fe1b51850b4acf21b179c45070ac7b03a9'.decode('hex')
+    alert_public_key = binascii.unhexlify('040184710fa689ad5023690c80f3a49c8f13f8d45b8c857fbcbc8bc4a8e4d3eb4b10f4d4604fa08dce601aaf0f470216fe1b51850b4acf21b179c45070ac7b03a9')
 
     block_height_guess = []
 

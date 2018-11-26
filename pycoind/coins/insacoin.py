@@ -22,8 +22,8 @@
 
 
 from . import coin
-
 from .. import util
+import binascii
 
 __all__ = ['Insacoin']
 
@@ -52,16 +52,16 @@ class Insacoin(coin.Coin):
     rpc_port = 7332
 
     genesis_version = 1
-    genesis_block_hash = '12a765e31ffd4059bada1e25190f6e98c99d9714d334efa41a195a7e7e04bfe2'.decode('hex')
-    genesis_merkle_root = '97ddfbbae6be97fd6cdf3e7ca13232a3afff2353e29badfab7f73011edd4ced9'.decode('hex')
+    genesis_block_hash = binascii.unhexlify('12a765e31ffd4059bada1e25190f6e98c99d9714d334efa41a195a7e7e04bfe2')
+    genesis_merkle_root = binascii.unhexlify('97ddfbbae6be97fd6cdf3e7ca13232a3afff2353e29badfab7f73011edd4ced9')
     genesis_timestamp = 1317972665
     genesis_bits = 504365040
     genesis_nonce = 4294967295
     
     # https://github.com/litecoin-project/litecoin/blob/master-0.8/src/main.cpp#L3082
-    magic = '\xfd\xc2\xb8\xdd'
+    magic = "\xfd\xc2\xb8\xdd"
 
-    alert_public_key = '04978a60a55a728d1d12608d432b33d5cce8405a4d39a7b50aa9d9e8a22e62b74e9882a52108072104ad3d0356e457751879dfbef27d051ce421968259184482fc'.decode('hex')
+    alert_public_key = binascii.unhexlify('04978a60a55a728d1d12608d432b33d5cce8405a4d39a7b50aa9d9e8a22e62b74e9882a52108072104ad3d0356e457751879dfbef27d051ce421968259184482fc')
     address_version = chr(102)
 
     block_height_guess = [
@@ -72,6 +72,6 @@ class InsacoinTestnet(Insacoin):
     port = 19333
     rpc_port = 19332
 
-    magic = '\xfc\xc1\xb7\xdc'
+    magic = "\xfc\xc1\xb7\xdc"
 
-    alert_public_key = '04978a60a55a728d1d12608d432b33d5cce8405a4d39a7b50aa9d9e8a22e62b74e9882a52108072104ad3d0356e457751879dfbef27d051ce421968259184482fc'.decode('hex')
+    alert_public_key = binascii.unhexlify('04978a60a55a728d1d12608d432b33d5cce8405a4d39a7b50aa9d9e8a22e62b74e9882a52108072104ad3d0356e457751879dfbef27d051ce421968259184482fc')

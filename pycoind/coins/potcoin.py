@@ -22,10 +22,9 @@
 
 
 from . import coin
-
 from .litecoin import Litecoin
-
 from .. import util
+import binascii
 
 class Potcoin(Litecoin):
 
@@ -43,8 +42,8 @@ class Potcoin(Litecoin):
 
     port = 4200
 
-    genesis_block_hash = 'ec3513ee046dcd52dd41975fcfab4f878f91890a4d17c07a1d7d9c2acbb036de'.decode('hex')
-    genesis_merkle_root = '3de5af055300a913c07e178efc107c9184dddcbc9d888aae7eea6ee00686a0d5'.decode('hex')
+    genesis_block_hash = binascii.unhexlify('ec3513ee046dcd52dd41975fcfab4f878f91890a4d17c07a1d7d9c2acbb036de')
+    genesis_merkle_root = binascii.unhexlify('3de5af055300a913c07e178efc107c9184dddcbc9d888aae7eea6ee00686a0d5')
     genesis_timestamp = 1389688315
     genesis_nonce = 471993
 
@@ -53,7 +52,7 @@ class Potcoin(Litecoin):
     address_version = chr(55)
     script_address = chr(5)
 
-    alert_public_key = '040184710fa689ad5023690c80f3a49c8f13f8d45b8c857fbcbc8bc4a8e4d3eb4b10f4d4604fa08dce601aaf0f470216fe1b51850b4acf21b179c45070ac7b03a9'.decode('hex')
+    alert_public_key = binascii.unhexlify('040184710fa689ad5023690c80f3a49c8f13f8d45b8c857fbcbc8bc4a8e4d3eb4b10f4d4604fa08dce601aaf0f470216fe1b51850b4acf21b179c45070ac7b03a9')
 
     block_height_guess = [
         ('potchain.aprikos.net', util.fetch_url_int('http://potchain.aprikos.net/chain/Potcoin/q/getblockcount')),

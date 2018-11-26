@@ -22,10 +22,9 @@
 
 
 from . import coin
-
 from .litecoin import Litecoin
-
 from .. import util
+import binascii
 
 # https://github.com/FeatherCoin/Feathercoin
 
@@ -57,15 +56,15 @@ class Feathercoin(Litecoin):
     rpc_port = 9337
 
     genesis_version = 1
-    genesis_block_hash = 'e2bf047e7e5a191aa4ef34d314979dc9986e0f19251edaba5940fd1fe365a712'.decode('hex')
-    genesis_merkle_root = 'd9ced4ed1130f7b7faad9be25323ffafa33232a17c3edf6cfd97bee6bafbdd97'.decode('hex')
+    genesis_block_hash = binascii.unhexlify('e2bf047e7e5a191aa4ef34d314979dc9986e0f19251edaba5940fd1fe365a712')
+    genesis_merkle_root = binascii.unhexlify('d9ced4ed1130f7b7faad9be25323ffafa33232a17c3edf6cfd97bee6bafbdd97')
     genesis_timestamp = 1317972665
     genesis_bits = 504365040
     genesis_nonce = 2084524493
 
-    magic = '\xfb\xc0\xb6\xdb'
+    magic = "\xfb\xc0\xb6\xdb"
 
-    addrss_version = chr(14)
+    address_version = chr(14)
 
     block_height_guess = [
         ('explorer.feathercoin.com', util.fetch_url_int('http://explorer.feathercoin.com/chain/Feathercoin/q/getblockcount')),

@@ -22,8 +22,8 @@
 
 
 from . import coin
-
 from .litecoin import Litecoin
+import binascii
 
 class Novacoin(Litecoin):
 
@@ -71,7 +71,7 @@ class Novacoin(Litecoin):
     # This public key will be used to verify alerts; you can use the
     # pycoind.wallet.Address to generate a public/private key pair
     # Usually in alert.cpp
-    alert_public_key = '043fa441fd4203d03f5df2b75ea14e36f20d39f43e7a61aa7552ab9bcd7ecb0e77a3be4585b13fcdaa22ef6e51f1ff6f2929bec2494385b086fb86610e33193195'.decode('hex')
+    alert_public_key = binascii.unhexlify('043fa441fd4203d03f5df2b75ea14e36f20d39f43e7a61aa7552ab9bcd7ecb0e77a3be4585b13fcdaa22ef6e51f1ff6f2929bec2494385b086fb86610e33193195')
 
     block_height_guess = []
 

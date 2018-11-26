@@ -25,10 +25,9 @@
 
 
 from . import coin
-
 from .litecoin import Litecoin
-
 from .. import util
+import binascii
 
 class Mooncoin(Litecoin):
 
@@ -61,8 +60,8 @@ class Mooncoin(Litecoin):
 
     # Genesis block (hashes are little endiand; ie. 0's should be at the end)
     # @TODO: create a utility function to generate new genesis blocks
-    genesis_block_hash = 'e9aec56aa60b81d3ebb33556b05d765de36c1a2efd1d4b4d724248acbb7c68bd'.decode('hex')
-    genesis_merkle_root = '6632e9c6d07adfb85c364542de24ebf81de0def5a5ff8f1294055d56d7aeaab3'.decode('hex')
+    genesis_block_hash = binascii.unhexlify('e9aec56aa60b81d3ebb33556b05d765de36c1a2efd1d4b4d724248acbb7c68bd')
+    genesis_merkle_root = binascii.unhexlify('6632e9c6d07adfb85c364542de24ebf81de0def5a5ff8f1294055d56d7aeaab3')
     genesis_timestamp = 1388158603
     genesis_nonce = 1767251
 
@@ -81,7 +80,7 @@ class Mooncoin(Litecoin):
 
     # This public key will be used to verify alerts; you can use the
     # pycoind.wallet.Address to generate a public/private key pair
-    alert_public_key = '04d4da7a5dae4db797d9b0644d57a5cd50e05a70f36091cd62e2fc41c98ded06340be5a43a35e185690cd9cde5d72da8f6d065b499b06f51dcfba14aad859f443a'.decode('hex')
+    alert_public_key = binascii.unhexlify('04d4da7a5dae4db797d9b0644d57a5cd50e05a70f36091cd62e2fc41c98ded06340be5a43a35e185690cd9cde5d72da8f6d065b499b06f51dcfba14aad859f443a')
 
 
     block_height_guess = [

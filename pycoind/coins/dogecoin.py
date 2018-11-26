@@ -22,10 +22,9 @@
 
 
 from . import coin
-
 from .litecoin import Litecoin
-
 from .. import util
+import binascii
 
 # https://github.com/dogecoin/dogecoin
 
@@ -48,13 +47,13 @@ class Dogecoin(Litecoin):
     rpc_port = 22555
 
     genesis_version = 1
-    genesis_block_hash = '9156352c1818b32e90c9e792efd6a11a82fe7956a630f03bbee236cedae3911a'.decode('hex')
-    genesis_merkle_root = '696ad20e2dd4365c7459b4a4a5af743d5e92c6da3229e6532cd605f6533f2a5b'.decode('hex')
+    genesis_block_hash = binascii.unhexlify('9156352c1818b32e90c9e792efd6a11a82fe7956a630f03bbee236cedae3911a')
+    genesis_merkle_root = binascii.unhexlify('696ad20e2dd4365c7459b4a4a5af743d5e92c6da3229e6532cd605f6533f2a5b')
     genesis_timestamp = 1386325540
     genesis_bits = 504365040
     genesis_nonce = 99943
 
-    magic = '\xc0\xc0\xc0\xc0'
+    magic = "\xc0\xc0\xc0\xc0"
 
     address_version = chr(30)
 

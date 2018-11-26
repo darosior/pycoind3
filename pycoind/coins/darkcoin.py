@@ -23,9 +23,10 @@
 
 from . import coin
 import util
+import binascii
 
 class Darkcoin(coin.Coin):
-    name = 'darkcoin'
+    name = "darkcoin"
 
     symbols = [ 'DRK' ]
     symbol = symbols[0]
