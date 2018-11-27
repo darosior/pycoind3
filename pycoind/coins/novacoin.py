@@ -64,9 +64,9 @@ class Novacoin(Litecoin):
     # This value will determine what character your addresses begin with
     # @TODO: create utility function to compute this based on prefix
     # Usually in chainparams.cpp of base58.h under PUBKEY_ADDRESS
-    address_version = chr(8)
+    address_version = 0x8
 
-    script_address = chr(20)
+    script_address = 0x14
 
     # This public key will be used to verify alerts; you can use the
     # pycoind.wallet.Address to generate a public/private key pair
@@ -79,5 +79,5 @@ class NovacoinTest(Novacoin):
 
     port = 17777
     magic = "\xcd\xf2\xc0\xef"
-    address_version = chr(111)
-    script_address = chr(196)
+    address_version = 0x6f
+    script_address = 0xc4

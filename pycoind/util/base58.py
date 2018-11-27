@@ -22,78 +22,92 @@
 
 
 from .hash import sha256d
-
-__all__ = ['decode_check', 'encode_check']
-
-# from https://bitcointalk.org/index.php?topic=1026.0
-__b58chars = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz'
-__b58base = len(__b58chars)
-
-def b58encode(v):
-    "encode v, which is a string of bytes, to base58."
-
-    long_value = 0
-    for (i, c) in enumerate(v[::-1]):
-        long_value += (256 ** i) * ord(c)
-
-    result = ''
-    while long_value >= __b58base:
-        (div, mod) = divmod(long_value, __b58base)
-        result = __b58chars[mod] + result
-        long_value = div
-    result = __b58chars[long_value] + result
-
-    # Bitcoin does a little leading-zero-compression:                                                                                                                  
-    # leading 0-bytes in the input become leading-1s                                                                                                                   
-    nPad = 0
-    for c in v:
-        if c == '\0':
-            nPad += 1
-        else:
-            break
-
-    return (__b58chars[0] * nPad) + result
+from math import log
 
 
-def b58decode(v, length = None):
-    "decode v into a string of len bytes"
+# From https://github.com/darosior/bitcoineasy/blob/master/bitcoineasy/utils.py
+def sizeof(n):
+    """get the size in bytes of an integer, https://stackoverflow.com/questions/14329794/get-size-of-integer-in-python
 
-    long_value = 0
-    for (i, c) in enumerate(v[::-1]):
-        long_value += __b58chars.find(c) * (__b58base ** i)
+    :param n: the integer to get the size from
 
-    result = ''
-    while long_value >= 256:
-        (div, mod) = divmod(long_value, 256)
-        result = chr(mod) + result
-        long_value = div
-    result = chr(long_value) + result
+    :return: the size in bytes of the int passed as the first parameter.
+    """
+    if n == 0:
+        return 1
+    return int(log(n, 256)) + 1
 
-    nPad = 0
-    for c in v:
-        if c == __b58chars[0]:
-            nPad += 1
-        else:
-            break
 
-    result = chr(0) * nPad + result
-    if length is not None and len(result) != length:
-        return None
+# From https://github.com/darosior/bitcoineasy/blob/master/bitcoineasy/utils.py
+def b58encode(payload):
+    """Takes a number (int or bytes) and returns its base58_encoding.
 
-    return result
+    :param payload: The data to encode, can be bytes or int
+
+    :return: the number passed as first parameter as a base58 encoded str.
+    """
+    if isinstance(payload, bytes):
+        n = int.from_bytes(payload, 'big')
+    elif isinstance(payload, int):
+        n = payload
+    else:
+        raise ValueError('b58encode takes bytes or int')
+
+    alphabet = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz"
+    x = n % 58
+    rest = n // 58
+    if rest == 0:
+        return alphabet[x]
+    else:
+        return b58encode(rest) + alphabet[x]
+
+
+def b58decode(string):
+    """Takes a base58-encoded number and returns it in base10.
+
+    :param string: the number to base58_decode (as str).
+
+    :return: the number passed as first parameter, base10 encoded.
+    """
+    alphabet = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz"
+    # Populating a dictionary with base58 symbol chart
+    dict = {}
+    k = 0
+    for i in alphabet:
+        dict[i] = k
+        k += 1
+    n = 0  # Result
+    pos = 0  # Cf https://www.dcode.fr/conversion-base-n
+    for i in string:
+        for y in alphabet:
+            if i == y:
+                n = n * 58 + dict[i]
+        pos += 1
+    return n
 
 
 def encode_check(payload):
-    'Returns the base58 encoding with a 4-byte checksum.'
+    """Returns the base58 encoding with a 4-byte checksum.
 
+    :param payload: The data (as bytes) to encode.
+    """
     checksum = sha256d(payload)[:4]
-    return b58encode(payload + checksum)
+    if payload[0] == 0x00:
+        # Again, the leading 0 problem which results in nothing during int conversion
+        return b58encode(b'\x00') + b58encode(payload + checksum)
+    else:
+        return b58encode(payload + checksum)
 
+def decode_check(string):
+    """Returns the base58 decoded value, verifying the checksum.
 
-def decode_check(payload):
-    'Returns the base58 decoded value, verifying the checksum.'
-    payload = b58decode(payload, None)
+    :param string: The data to decode, as a string.
+    """
+    number = b58decode(string)
+    # Converting to bytes in order to verify the checksum
+    payload = number.to_bytes(sizeof(number), 'big')
     if payload and sha256d(payload[:-4])[:4] == payload[-4:]:
         return payload[:-4]
-    return None
+    else:
+        return None
 

@@ -56,7 +56,7 @@ class Coin(object):
 
     magic = chr(0) * 4
 
-    address_version = chr(0)
+    address_version = 0x00
 
     alert_public_key = None
 

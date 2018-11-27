@@ -29,7 +29,7 @@ class Namecoin(coin.Coin):
     symbols = [ 'NMC' ]
     symbol = symbols[0]
 
-    address_version = chr(52)
+    address_version = 0x34
 
     magic = "\xf9\xbe\xb4\xfe"
 

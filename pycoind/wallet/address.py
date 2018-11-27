@@ -59,7 +59,7 @@ class Address(BaseAddress):
          private_key    WIF encoded private key (compressed or uncompressed)
          public_key     binary public key (compressed or uncompressed)'''
 
-    def __init__(self, public_key = None, private_key = None, coin = coins.Bitcoin):
+    def __init__(self, public_key=None, private_key=None, coin=coins.Bitcoin):
         BaseAddress.__init__(self, private_key, coin)
 
         self._compressed = False
@@ -85,12 +85,11 @@ class Address(BaseAddress):
             self._private_key = None
 
         if public_key:
-
             # we store the public key decompressed
-            if public_key[0] == chr(0x04):
+            if public_key[0] == 0x04:
                 if len(public_key) != 65:
-                    raise ValueError('invalid uncomprssed public key')
-            elif public_key[0] in (chr(0x02), chr(0x03)):
+                    raise ValueError('invalid uncompressed public key')
+            elif public_key[0] in (0x02, 0x03):
                 public_key = util.key.decompress_public_key(public_key)
                 self._compressed = True
             else:
@@ -160,9 +159,9 @@ class Address(BaseAddress):
         if self.compressed: return self
 
         if self.private_key:
-            return Address(private_key = util.key.privkey_to_wif(self._privkey + chr(0x01)), coin = self.coin)
+            return Address(private_key = util.key.privkey_to_wif(self._privkey + b'\x01'), coin = self.coin)
 
-        if address.public_key:
+        if self.public_key:
             return Address(public_key = util.key.compress_public_key(self.public_key), coin = self.coin)
 
         raise ValueError('address cannot be compressed')
@@ -402,9 +401,7 @@ def _decrypt_private_key(private_key, passphrase, coin = coins.Bitcoin):
 def _key_from_point(point, compressed):
     'Converts a point into a key.'
 
-    key = (chr(0x04) +
-           number_to_string(point.x(), curve.order) +
-           number_to_string(point.y(), curve.order))
+    key = b'\x04' + number_to_string(point.x(), curve.order) + number_to_string(point.y(), curve.order)
 
     if compressed:
         key = util.key.compress_public_key(key)

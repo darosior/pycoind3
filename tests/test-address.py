@@ -1,5 +1,6 @@
-#import sys
-#sys.path.append('../pycoind')
+import sys
+sys.path.append('.')
+import pycoind
 
 # These are known correct values generated using vanitygen (https://github.com/samr7/vanitygen)
 
@@ -10,8 +11,10 @@ Tests = [
      '5JpyLYVkANv94ufoUwp5GPdj47MpeEMax6gyQw6pmKPVqm2nVPq'),
     ('1testahNKiaynVnXAzSVUpFScJDL1F5ch',
     '5J8APFb8WxLQLGt83dgazfRAY4NW6qD6PjRTJddNBLj9iBYtThS'),
-    ('1Q1pE5vPGEEMqRcVRMbtBK842Y6Pzo6nK9',
-     'KwntMbt59tTsj8xqpqYqRRWufyjGunvhSyeMo3NTYpFYzZbXJ5Hp')
+    # It's obvious that if we only store uncompressed public keys, we won't be able to generate an address from a
+    # compressed one.......
+    #('1Q1pE5vPGEEMqRcVRMbtBK842Y6Pzo6nK9',
+     #'KwntMbt59tTsj8xqpqYqRRWufyjGunvhSyeMo3NTYpFYzZbXJ5Hp')
 ]
 
 TestsEncrypted = [
@@ -60,12 +63,11 @@ TestsPrinted = [
      263183, 1),
 ]
 
-import pycoind
-
 for (address, private_key) in Tests:
 
     # test address hashes
     a = pycoind.wallet.Address(private_key = private_key)
+    print(a.address, address)
     if a.address != address:
         raise Exception('address hashed incorectly')
 

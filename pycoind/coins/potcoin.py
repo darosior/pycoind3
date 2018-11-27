@@ -49,8 +49,8 @@ class Potcoin(Litecoin):
 
     magic = "\xfb\xc0\xb6\xdb"
 
-    address_version = chr(55)
-    script_address = chr(5)
+    address_version = 0x37
+    script_address = 0x5
 
     alert_public_key = binascii.unhexlify('040184710fa689ad5023690c80f3a49c8f13f8d45b8c857fbcbc8bc4a8e4d3eb4b10f4d4604fa08dce601aaf0f470216fe1b51850b4acf21b179c45070ac7b03a9')
 

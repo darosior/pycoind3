@@ -66,7 +66,7 @@ class Litecoin(coin.Coin):
     magic = "\xfb\xc0\xb6\xdb"
 
     alert_public_key = binascii.unhexlify('040184710fa689ad5023690c80f3a49c8f13f8d45b8c857fbcbc8bc4a8e4d3eb4b10f4d4604fa08dce601aaf0f470216fe1b51850b4acf21b179c45070ac7b03a9')
-    address_version = chr(48)
+    address_version = 0x30
 
     block_height_guess = [
         ('chain.so', util.fetch_url_json_path_int('https://chain.so/api/v2/get_info/LTC', 'data/blocks')),

@@ -81,7 +81,7 @@ class Zetacoin(coin.Coin):
     # This value will determine what character your addresses begin with
     # @TODO: create utility function to compute this based on prefix
     # Usually in chainparams.cpp of base58.h under PUBKEY_ADDRESS
-    address_version = chr(80)
+    address_version = 0x50
 
     # This public key will be used to verify alerts; you can use the
     # pycoind.wallet.Address to generate a public/private key pair

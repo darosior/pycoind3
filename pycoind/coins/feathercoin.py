@@ -64,7 +64,7 @@ class Feathercoin(Litecoin):
 
     magic = "\xfb\xc0\xb6\xdb"
 
-    address_version = chr(14)
+    address_version = 0xe
 
     block_height_guess = [
         ('explorer.feathercoin.com', util.fetch_url_int('http://explorer.feathercoin.com/chain/Feathercoin/q/getblockcount')),

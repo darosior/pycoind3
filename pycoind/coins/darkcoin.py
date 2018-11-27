@@ -70,7 +70,7 @@ class Darkcoin(coin.Coin):
     # https://github.com/darkcoinproject/darkcoin/blob/master/src/protocol.cpp#L26
     magic = "\xbf\x0c\x6b\xbd"
 
-    address_version = chr(76)
+    address_version = 0x4c
 
 class DarkcoinTest(Darkcoin):
     dns_seeds = [

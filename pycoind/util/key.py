@@ -37,10 +37,20 @@ __all__ = [
 ]
 
 def compress_public_key(public_key):
-    if public_key[0] != chr(0x04) or len(public_key) != 65:
+    """Compresses a given uncompressed public key.
+
+    :param public_key: the key to compress, as bytes
+    :return: the compressed key, as bytes
+    """
+    if public_key[0] != 0x04 or len(public_key) != 65:
         raise ValueError('invalid uncompressed public key')
-    y_parity = string_to_number(public_key[33:65])
-    return chr(0x02 + (y_parity & 0x01)) + public_key[1:33]
+    # We take the y coordinate
+    y = string_to_number(public_key[33:65])
+    # And check its parity, to add the appropriate byte
+    if y % 2:
+        return b'\x02' + public_key[1:33]
+    else:
+        return b'\x03' + public_key[1:33]
 
 _a = curve.curve.a()
 _b = curve.curve.b()
@@ -48,7 +58,6 @@ _p = curve.curve.p()
 _n = curve.order
 
 def decompress_public_key(public_key):
-
     if public_key[0] == chr(0x04) and len(public_key) == 65:
         x = string_to_number(public_key[1:33])
         y = string_to_number(public_key[33:65])
@@ -71,30 +80,36 @@ def decompress_public_key(public_key):
 
 
 # See: https://en.bitcoin.it/wiki/Wallet_import_format
-def privkey_to_wif(privkey, prefix = chr(0x80)):
+def privkey_to_wif(privkey, prefix = b'\x80'):
     return base58.encode_check(prefix + privkey)
 
 # See: https://en.bitcoin.it/wiki/Wallet_import_format
-def privkey_from_wif(privkey, prefix = chr(0x80)):
+def privkey_from_wif(privkey, prefix = b'\x80'):
     key = base58.decode_check(privkey)
-    if prefix != key[0]:
-        raise ValueError('wif private key has does not match prefix')
+    if int.from_bytes(prefix, 'big') != key[0]:
+        raise ValueError('wif private key does not match prefix')
     if len(key) == 33:
         if privkey[0] != '5':
             raise ValueError('uncompressed wif private key does not begin with 5')
         return key[1:]
     elif len(key) == 34:
-        if key[-1] != chr(0x01):
+        if key[-1] != 0x01:
             raise ValueError('compressed wif private key missing compression bit')
         if privkey[0] not in ('L', 'K'):
             raise ValueError('uncompressed wif private key does not begin with 5')
         return key[1:-1]
     raise ValueError('invalid wif private key')
 
-def pubkeyhash_to_address(publickey_hash, version = chr(0)):
-    return base58.encode_check(version + publickey_hash)
+def pubkeyhash_to_address(publickey_hash, version = 0x00):
+    if version == 0x00:
+        # A special case, otherwise converting 0x00 to bytes results in b''
+        return base58.encode_check(b'\x00' + publickey_hash)
+    else:
+        if isinstance(version, int):
+            version = version.to_bytes(base58.sizeof(version), 'big')
+        return base58.encode_check(version + publickey_hash)
 
 # See: https://en.bitcoin.it/wiki/Technical_background_of_Bitcoin_addresses
-def publickey_to_address(publickey, version = chr(0)):
+def publickey_to_address(publickey, version = 0x00):
     return pubkeyhash_to_address(hash160(publickey), version)
 

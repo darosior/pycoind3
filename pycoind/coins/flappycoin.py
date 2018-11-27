@@ -71,9 +71,9 @@ class Flappycoin(Litecoin):
     # This value will determine what character your addresses begin with
     # @TODO: create utility function to compute this based on prefix
     # Usually in chainparams.cpp of base58.h under PUBKEY_ADDRESS
-    address_version = chr(35)
+    address_version = 0x23
 
-    script_address = chr(5)
+    script_address = 0x5
 
     # This public key will be used to verify alerts; you can use the
     # pycoind.wallet.Address to generate a public/private key pair

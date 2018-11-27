@@ -48,7 +48,7 @@ class Blackcoin(coin.Coin):
 
     magic = "\x70\x35\x22\x05"
 
-    address_version = chr(0)
+    address_version = 0x00
 
     alert_public_key = binascii.unhexlify('0486bce1bac0d543f104cbff2bd23680056a3b9ea05e1137d2ff90eeb5e08472eb500322593a2cb06fbf8297d7beb6cd30cb90f98153b5b7cce1493749e41e0284')
     checkpoint_public_key = binascii.unhexlify('04a18357665ed7a802dcf252ef528d3dc786da38653b51d1ab8e9f4820b55aca807892a056781967315908ac205940ec9d6f2fd0a85941966971eac7e475a27826')

@@ -55,7 +55,7 @@ class Dogecoin(Litecoin):
 
     magic = "\xc0\xc0\xc0\xc0"
 
-    address_version = chr(30)
+    address_version = 0x1e
 
     block_height_guess = [
         ('chain.so', util.fetch_url_json_path_int('https://chain.so/api/v2/get_info/DOGE', 'data/blocks')),

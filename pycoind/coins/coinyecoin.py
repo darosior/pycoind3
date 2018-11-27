@@ -59,9 +59,9 @@ class Coinyecoin(Litecoin):
 
     magic = "\xf9\xf7\xc0\xe8"
 
-    address_version = chr(11)
+    address_version = 0xb
 
-    script_address = chr(22)   #??
+    script_address = 0x16   #??
 
     alert_public_key = binascii.unhexlify('040184710fa689ad5023690c80f3a49c8f13f8d45b8c857fbcbc8bc4a8e4d3eb4b10f4d4604fa08dce601aaf0f470216fe1b51850b4acf21b179c45070ac7b03a9')
 
@@ -70,7 +70,7 @@ class Coinyecoin(Litecoin):
 class _CoinyecoinTest(Coinyecoin):
     magic = "\xfa\xf8\xc1\xe9"
 
-    address_version = chr(113)
+    address_version = 0x71
 
-    script_address = chr(196)
+    script_address = 0xc4
 
