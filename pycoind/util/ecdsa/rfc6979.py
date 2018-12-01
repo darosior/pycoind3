@@ -14,18 +14,6 @@ from binascii import hexlify
 from .util import number_to_string, number_to_string_crop
 from .six import b
 
-try:
-    bin(0)
-except NameError:
-    binmap = {"0": "0000", "1": "0001", "2": "0010", "3": "0011",
-              "4": "0100", "5": "0101", "6": "0110", "7": "0111",
-              "8": "1000", "9": "1001", "a": "1010", "b": "1011",
-              "c": "1100", "d": "1101", "e": "1110", "f": "1111"}
-    def bin(value): # for python2.5
-        v = "".join(binmap[x] for x in "%x"%abs(value)).lstrip("0")
-        if value < 0:
-            return "-0b" + v
-        return "0b" + v
 
 def bit_length(num):
     # http://docs.python.org/dev/library/stdtypes.html#int.bit_length
@@ -33,13 +21,15 @@ def bit_length(num):
     s = s.lstrip('-0b')  # remove leading zeros and minus sign
     return len(s)  # len('100101') --> 6
 
+
 def bits2int(data, qlen):
     x = int(hexlify(data), 16)
     l = len(data) * 8
 
     if l > qlen:
-        return x >> (l-qlen)
+        return x >> (l - qlen)
     return x
+
 
 def bits2octets(data, order):
     z1 = bits2int(data, bit_length(order))
@@ -50,19 +40,24 @@ def bits2octets(data, order):
 
     return number_to_string_crop(z2, order)
 
+
 # https://tools.ietf.org/html/rfc6979#section-3.2
-def generate_k(generator, secexp, hash_func, data):
+def generate_k(order, secexp, hash_func, data, retry_gen=0, extra_entropy=b''):
     '''
-        generator - ECDSA generator used in the signature
+        order - order of the DSA generator used in the signature
         secexp - secure exponent (private key) in numeric form
         hash_func - reference to the same hash function used for generating hash
         data - hash in binary form of the signing data
+        retry_gen - int - how many good 'k' values to skip before returning
+        extra_entropy - extra added data in binary form as per section-3.6 of
+            rfc6979
     '''
 
-    qlen = bit_length(generator.order())
+    qlen = bit_length(order)
     holen = hash_func().digest_size
     rolen = (qlen + 7) / 8
-    bx = number_to_string(secexp, generator.order()) + bits2octets(data, generator.order())
+    bx = number_to_string(secexp, order) + bits2octets(data, order) + \
+        extra_entropy
 
     # Step B
     v = b('\x01') * holen
@@ -72,13 +67,13 @@ def generate_k(generator, secexp, hash_func, data):
 
     # Step D
 
-    k = hmac.new(k, v+b('\x00')+bx, hash_func).digest()
+    k = hmac.new(k, v + b('\x00') + bx, hash_func).digest()
 
     # Step E
     v = hmac.new(k, v, hash_func).digest()
 
     # Step F
-    k = hmac.new(k, v+b('\x01')+bx, hash_func).digest()
+    k = hmac.new(k, v + b('\x01') + bx, hash_func).digest()
 
     # Step G
     v = hmac.new(k, v, hash_func).digest()
@@ -96,8 +91,11 @@ def generate_k(generator, secexp, hash_func, data):
         # Step H3
         secret = bits2int(t, qlen)
 
-        if secret >= 1 and secret < generator.order():
-            return secret
+        if secret >= 1 and secret < order:
+            if retry_gen <= 0:
+                return secret
+            else:
+                retry_gen -= 1
 
-        k = hmac.new(k, v+b('\x00'), hash_func).digest()
+        k = hmac.new(k, v + b('\x00'), hash_func).digest()
         v = hmac.new(k, v, hash_func).digest()

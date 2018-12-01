@@ -39,10 +39,10 @@ if PY3:
 
     MAXSIZE = sys.maxsize
 else:
-    string_types = str,
-    integer_types = (int, int)
-    class_types = (type, type)
-    text_type = str
+    string_types = basestring,
+    integer_types = (int, long)
+    class_types = (type, types.ClassType)
+    text_type = unicode
     binary_type = str
 
     if sys.platform.startswith("java"):
@@ -231,7 +231,7 @@ try:
     advance_iterator = next
 except NameError:
     def advance_iterator(it):
-        return it.__next__()
+        return it.next()
 next = advance_iterator
 
 
@@ -249,11 +249,11 @@ if PY3:
     Iterator = object
 else:
     def get_unbound_function(unbound):
-        return unbound.__func__
+        return unbound.im_func
 
     class Iterator(object):
 
-        def __next__(self):
+        def next(self):
             return type(self).__next__(self)
 
     callable = callable
@@ -298,12 +298,12 @@ else:
     def b(s):
         return s
     def u(s):
-        if isinstance(s, str):
+        if isinstance(s, unicode):
             return s
-        return str(s, "unicode_escape")
+        return unicode(s, "unicode_escape")
     int2byte = chr
-    import io
-    StringIO = BytesIO = io.StringIO
+    import StringIO
+    StringIO = BytesIO = StringIO.StringIO
 _add_doc(b, """Byte literal""")
 _add_doc(u, """Text literal""")
 
@@ -347,19 +347,19 @@ else:
         if fp is None:
             return
         def write(data):
-            if not isinstance(data, str):
+            if not isinstance(data, basestring):
                 data = str(data)
             fp.write(data)
         want_unicode = False
         sep = kwargs.pop("sep", None)
         if sep is not None:
-            if isinstance(sep, str):
+            if isinstance(sep, unicode):
                 want_unicode = True
             elif not isinstance(sep, str):
                 raise TypeError("sep must be None or a string")
         end = kwargs.pop("end", None)
         if end is not None:
-            if isinstance(end, str):
+            if isinstance(end, unicode):
                 want_unicode = True
             elif not isinstance(end, str):
                 raise TypeError("end must be None or a string")
@@ -367,12 +367,12 @@ else:
             raise TypeError("invalid keyword arguments to print()")
         if not want_unicode:
             for arg in args:
-                if isinstance(arg, str):
+                if isinstance(arg, unicode):
                     want_unicode = True
                     break
         if want_unicode:
-            newline = str("\n")
-            space = str(" ")
+            newline = unicode("\n")
+            space = unicode(" ")
         else:
             newline = "\n"
             space = " "
