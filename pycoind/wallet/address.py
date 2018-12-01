@@ -23,13 +23,15 @@
 import os
 import struct
 import unicodedata
+import scrypt
+from Crypto.Cipher import AES
 
 from .. import coins
 from .. import util
 
 from ..util.ecdsa import SECP256k1 as curve
 from ..util.ecdsa.util import string_to_number, number_to_string, randrange
-from ..util.pyaes.aes import AES
+# from ..util.pyaes.aes import AES
 
 __all__ = ['Address', 'EncryptedAddress', 'get_address', 'PrintedAddress']
 
@@ -200,10 +202,10 @@ class EncryptedAddress(BaseAddress):
         BaseAddress.__init__(self, private_key, coin)
 
         privkey = self._privkey
-        if len(privkey) != 39 or privkey[0:2] not in ('\x01\x42', '\x01\x43'):
+        if len(privkey) != 39 or privkey[0:2] not in (b'\x01\x42', b'\x01\x43'):
             raise ValueError('unsupported encrypted address')
 
-        self._compressed = bool(ord(privkey[2]) & 0x20)
+        self._compressed = privkey[2] == int('e0', 16)
 
     # encrypted addresses don't use the standard wif prefix
     _privkey = property(lambda s: util.base58.decode_check(s.private_key))
@@ -221,12 +223,10 @@ class EncryptedAddress(BaseAddress):
         'Return a decrypted address of this address, using passphrase.'
 
         # what function do we use to decrypt?
-        if self._privkey[1] == chr(0x42):
-            decrypt = _decrypt_private_key
+        if self._privkey[1] == 0x42:
+            return _decrypt_private_key(self.private_key, passphrase, self.coin)
         else:
-            decrypt = _decrypt_printed_private_key
-
-        return decrypt(self.private_key, passphrase, self.coin)
+            return _decrypt_printed_private_key(self.private_key, passphrase, self.coin)
 
     def __str__(self):
         return '<EncryptedAddress private_key=%s>' % self.private_key
@@ -363,37 +363,47 @@ def _encrypt_private_key(private_key, passphrase, coin = coins.Bitcoin):
 
 
 def _decrypt_private_key(private_key, passphrase, coin = coins.Bitcoin):
-    'Decrypts a private key.'
+    """
+    Decrypts a BIP38 encrypted private key
 
+    :param private_key: The encrypted private key, as str
+    :param passphrase: The passphrase with which was encrypted the key, as str
+    :param coin: The network (Bitcoin by default)
+    :return: an instance of the Address class
+    """
     payload = util.base58.decode_check(private_key)
-    if len(payload) != 39 or payload[:2] != "\x01\x42":
+    if len(payload) != 39 or payload[:2] != b'\x01\x42':
         return None
 
-    # decode the flags
-    flagbyte = ord(payload[2])
-    compressed = bool(flagbyte & 0x20)
+    # Decoding the flags
+    flagbyte = payload[2].to_bytes(util.base58.sizeof(payload[2]), 'big')
+    compressed = flagbyte == b'\xe0'
 
+    # The address
     salt = payload[3:7]
     encrypted = payload[7:39]
 
     # compute the key
-    derived_key = util.scrypt(_normalize_utf(passphrase), salt, 16384, 8, 8, 64)
+    derived_key = scrypt.hash(passphrase.encode(), salt, 16384, 8, 8)
     (derived_half1, derived_half2) = (derived_key[0:32], derived_key[32:])
 
-    aes = AES(derived_half2)
+    aes = AES.new(derived_half2)
 
     # decrypt the payload
-    decrypted_half1 = _decrypt_xor(encrypted[:16], derived_half1[:16], aes)
-    decrypted_half2 = _decrypt_xor(encrypted[16:], derived_half1[16:], aes)
+    decrypted_half1 = aes.decrypt(encrypted[:16])
+    decrypted_half2 = aes.decrypt(encrypted[16:])
+
+    # Decrypting the XOR
+    privkey = int.from_bytes(decrypted_half1 + decrypted_half2, 'big') ^ int.from_bytes(derived_half1, 'big')
+    privkey = privkey.to_bytes(util.base58.sizeof(privkey), 'big')
 
     # set the private key compressed bit if needed
-    privkey = decrypted_half1 + decrypted_half2
     if compressed:
-        privkey += chr(0x01)
+        privkey += b'\x01'
 
     # check the decrypted private key is correct (otherwise, wrong password)
     address = Address(private_key = util.key.privkey_to_wif(privkey), coin = coin)
-    if util.sha256d(address.address)[:4] != salt:
+    if util.sha256d(address.address.encode())[:4] != salt:
         return None
 
     return Address(private_key = address.private_key, coin = coin)
