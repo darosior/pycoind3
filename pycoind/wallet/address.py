@@ -108,7 +108,9 @@ class Address(BaseAddress):
 
     @property
     def public_key(self):
-        'The public key, compressed if the address is compressed.'
+        """
+        Returns the public key in the appropriate format (whether compressed or not)
+        """
         if self._compressed:
             return util.key.compress_public_key(self._public_key)
         return self._public_key
@@ -313,7 +315,12 @@ class Confirmation(object):
 
 
 def _normalize_utf(text):
-    'Returns text encoded in UTF-8 using "Normalization Form C".'
+    """
+    Encodes text in UTF-8 using "Normalization Form C"
+
+    :param text: The text to encode
+    :return: encoded text (as bytes)
+    """
 
     return unicodedata.normalize('NFC', str(text)).encode('utf8')
 
@@ -331,35 +338,43 @@ def _decrypt_xor(a, b, aes):
     return "".join(chr(c) for c in block)
 
 def _encrypt_private_key(private_key, passphrase, coin = coins.Bitcoin):
-    'Encrypts a private key.'
+    """
+    Encrypts a private_key as specified in BIP38.
+
+    :param private_key: The wif-encoded private key to encrypt, as str
+    :param passphrase: The passphrase with which encrypt the private key
+    :param coin: The network, Bitcoin by default
+    :return: an instance of the EncryptedAddress class
+    """
 
     # compute the flags
-    flagbyte = 0xc0
+    flagbyte = b'\xc0'
     if private_key.startswith('L') or private_key.startswith('K'):
-        flagbyte |= 0x20
+        flagbyte = b'\xe0'
     elif not private_key.startswith('5'):
         raise ValueError('unknown private key type')
 
     # compute the address, which is used for the salt
     address = Address(private_key = private_key, coin = coin)
-    salt = util.sha256d(address.address)[:4]
+    salt = util.sha256d(address.address.encode())[:4]
 
     # compute the key
-    derived_key = util.scrypt(_normalize_utf(passphrase), salt, 16384, 8, 8, 64)
+    derived_key = scrypt.hash(_normalize_utf(passphrase), salt, 16384, 8, 8)
     (derived_half1, derived_half2) = (derived_key[:32], derived_key[32:])
 
-    aes = AES(derived_half2)
+    aes = AES.new(derived_half2)
 
     # encrypt the private key
-    privkey  = address._privkey
-    encrypted_half1 = _encrypt_xor(privkey[:16], derived_half1[:16], aes)
-    encrypted_half2 = _encrypt_xor(privkey[16:], derived_half1[16:], aes)
+    key  = address._privkey
+    int1 = int.from_bytes(key[0:16], 'big') ^ int.from_bytes(derived_half1[0:16], 'big')
+    int2 = int.from_bytes(key[16:32], 'big') ^ int.from_bytes(derived_half1[16:32], 'big')
+    encrypted_half1 = aes.encrypt(int1.to_bytes(util.base58.sizeof(int1), 'big'))
+    encrypted_half2 = aes.encrypt(int2.to_bytes(util.base58.sizeof(int2), 'big'))
 
     # encode it
-    payload = (chr(0x01) + chr(0x42) + chr(flagbyte) + salt +
-               encrypted_half1 + encrypted_half2)
+    payload = util.base58.encode_check(b'\x01' + b'\x42' + flagbyte + salt + encrypted_half1 + encrypted_half2)
 
-    return EncryptedAddress(util.base58.encode_check(payload), coin)
+    return EncryptedAddress(payload, coin)
 
 
 def _decrypt_private_key(private_key, passphrase, coin = coins.Bitcoin):
@@ -384,7 +399,7 @@ def _decrypt_private_key(private_key, passphrase, coin = coins.Bitcoin):
     encrypted = payload[7:39]
 
     # compute the key
-    derived_key = scrypt.hash(passphrase.encode(), salt, 16384, 8, 8)
+    derived_key = scrypt.hash(_normalize_utf(passphrase), salt, 16384, 8, 8)
     (derived_half1, derived_half2) = (derived_key[0:32], derived_key[32:])
 
     aes = AES.new(derived_half2)

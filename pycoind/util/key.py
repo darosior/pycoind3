@@ -45,12 +45,12 @@ def compress_public_key(public_key):
     if public_key[0] != 0x04 or len(public_key) != 65:
         raise ValueError('invalid uncompressed public key')
     # We take the y coordinate
-    y = string_to_number(public_key[33:65])
+    y = int.from_bytes(public_key, 'big')
     # And check its parity, to add the appropriate byte
     if y % 2:
-        return b'\x02' + public_key[1:33]
-    else:
         return b'\x03' + public_key[1:33]
+    else:
+        return b'\x02' + public_key[1:33]
 
 _a = curve.curve.a()
 _b = curve.curve.b()
