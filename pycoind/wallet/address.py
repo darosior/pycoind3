@@ -24,6 +24,8 @@ import os
 import struct
 import unicodedata
 import scrypt
+import uuid
+import time
 from Crypto.Cipher import AES
 
 from .. import coins
@@ -121,9 +123,22 @@ class Address(BaseAddress):
 
     @staticmethod
     def generate(compressed = True, coin = coins.Bitcoin):
-        'Generate a new random address.'
-
-        secexp = randrange(curve.order)
+        """
+        Generates a private key from a CSRNG.
+        
+        :param compressed: Whether or not the public key should be compressed.
+        :param coin: The network.
+        :return: An instance of the Address class.
+        """
+        while True:
+            seconds = int(time.time())
+            entrop1 = util.sha256d(seconds.to_bytes(util.base58.sizeof(seconds), 'big'))
+            entrop2 = util.sha256d(os.urandom(256))
+            entrop3 = util.sha256d(uuid.uuid4().bytes)
+            entropy = util.sha256d(entrop1 + entrop2 + entrop3)
+            secexp = int.from_bytes(entropy, 'big')
+            if secexp < curve.order:
+                break
         key = number_to_string(secexp, curve.order)
         if compressed:
             key = key + b'\x01'
