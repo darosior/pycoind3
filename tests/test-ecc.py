@@ -1,5 +1,6 @@
 import unittest
-
+import sys
+sys.path.append('.')
 import pycoind
 
 class TestEllipticCurveCrypto(unittest.TestCase):

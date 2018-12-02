@@ -126,7 +126,7 @@ class Address(BaseAddress):
         secexp = randrange(curve.order)
         key = number_to_string(secexp, curve.order)
         if compressed:
-            key = key + chr(0x01)
+            key = key + b'\x01'
         return Address(private_key = util.key.privkey_to_wif(key), coin = coin)
 
     @staticmethod
