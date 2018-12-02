@@ -58,25 +58,27 @@ _p = curve.curve.p()
 _n = curve.order
 
 def decompress_public_key(public_key):
-    if public_key[0] == chr(0x04) and len(public_key) == 65:
+    #print(public_key)
+    if public_key[0] == 0x04 and len(public_key) == 65:
         x = string_to_number(public_key[1:33])
         y = string_to_number(public_key[33:65])
         if not point_is_valid(curve.generator, x, y):
-            raise ValueError('invalid public key')
+            raise ValueError('invalid uncompressed public key')
         return public_key
 
-    if public_key[0] not in (chr(0x02), chr(0x03)) or len(public_key) != 33:
+    if public_key[0] not in (0x02, 0x03) or len(public_key) != 33:
         raise ValueError('invalid compressed public key')
 
-    x = string_to_number(public_key[1:])
+    x = int.from_bytes(public_key[1:], 'big')
+    #print(x ** 3 + _a * x + _b, _p)
     y = square_root_mod_prime((x ** 3 + _a * x + _b) % _p, _p)
     if not point_is_valid(curve.generator, x, y):
         raise ValueError('invalid public key')
 
-    if (ord(public_key[0]) & 0x01) != (y & 0x01):
+    if (public_key[0] & 0x01) != (y & 0x01):
         y = _p - y
 
-    return chr(0x04) + public_key[1:] + number_to_string(y, _n)
+    return b'\x04' + public_key[1:] + number_to_string(y, _n)
 
 
 # See: https://en.bitcoin.it/wiki/Wallet_import_format

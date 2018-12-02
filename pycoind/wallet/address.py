@@ -197,9 +197,11 @@ class Address(BaseAddress):
         return '<Address address=%s public_key=%s private_key=%s>' % (self.address, self.public_key.encode('hex'), private_key)
 
 
-# See: https://github.com/bitcoin/bips/blob/master/bip-0038.mediawiki
 class EncryptedAddress(BaseAddress):
-
+    """
+    Represents an address derived from a BIP38 encrypted private key (EC multiply or not).
+    For more about BIP38 see https://github.com/bitcoin/bips/blob/master/bip-0038.mediawiki
+    """
     def __init__(self, private_key, coin = coins.Bitcoin):
         BaseAddress.__init__(self, private_key, coin)
 
@@ -262,10 +264,9 @@ class PrintedAddress(Address):
         return _generate_intermediate_code(passphrase, lot, sequence)
 
     @staticmethod
-    def generate(intermediate_code, coin = coins.Bitcoin):
+    def generate(intermediate_code, compressed, coin = coins.Bitcoin):
         'Generate a new random printed address for the intermediate_code.'
-
-        return _generate_printed_address(intermediate_code, coin)
+        return _generate_printed_address(intermediate_code, compressed, coin)
 
     @staticmethod
     def confirm(confirmation_code, passphrase, coin = coins.Bitcoin):
@@ -346,7 +347,6 @@ def _encrypt_private_key(private_key, passphrase, coin = coins.Bitcoin):
     :param coin: The network, Bitcoin by default
     :return: an instance of the EncryptedAddress class
     """
-
     # compute the flags
     flagbyte = b'\xc0'
     if private_key.startswith('L') or private_key.startswith('K'):
@@ -366,7 +366,7 @@ def _encrypt_private_key(private_key, passphrase, coin = coins.Bitcoin):
 
     # encrypt the private key
     key  = address._privkey
-    int1 = int.from_bytes(key[0:16], 'big') ^ int.from_bytes(derived_half1[0:16], 'big')
+    int1 = int.from_bytes(key[:16], 'big') ^ int.from_bytes(derived_half1[:16], 'big')
     int2 = int.from_bytes(key[16:32], 'big') ^ int.from_bytes(derived_half1[16:32], 'big')
     encrypted_half1 = aes.encrypt(int1.to_bytes(util.base58.sizeof(int1), 'big'))
     encrypted_half2 = aes.encrypt(int2.to_bytes(util.base58.sizeof(int2), 'big'))
@@ -425,7 +425,6 @@ def _decrypt_private_key(private_key, passphrase, coin = coins.Bitcoin):
 
 def _key_from_point(point, compressed):
     'Converts a point into a key.'
-
     key = b'\x04' + number_to_string(point.x(), curve.order) + number_to_string(point.y(), curve.order)
 
     if compressed:
@@ -435,15 +434,16 @@ def _key_from_point(point, compressed):
 
 def _key_to_point(key):
     'Converts a key to an EC Point.'
-
     key = util.key.decompress_public_key(key)
-    x = string_to_number(key[1:33])
-    y = string_to_number(key[33:65])
+    x = int.from_bytes(key[1:33], 'big')
+    y = int.from_bytes(key[33:65], 'big')
     return util.ecc.point(x, y)
 
 def _generate_intermediate_code(passphrase, lot = None, sequence = None):
-    'Generates a new intermediate code for passphrase.'
-
+    """
+    Generates an intermediate code for EC multiply BIP38 encryption.
+    See https://github.com/bitcoin/bips/blob/master/bip-0038.mediawiki for details and parameters.
+    """
     if (lot is None) ^ (sequence is None):
         raise ValueError('must specify both or neither of lot and sequence')
 
@@ -451,49 +451,75 @@ def _generate_intermediate_code(passphrase, lot = None, sequence = None):
         raise ValueError('lot is out of range')
 
     if sequence and not (0 <= sequence <= 0xfff):
-        raise ValueError('lot is out of range')
+        raise ValueError('sequence is out of range')
 
     # compute owner salt and entropy
     if lot is None:
         owner_salt = os.urandom(8)
         owner_entropy = owner_salt
+        prefactor = scrypt.hash(_normalize_utf(passphrase), owner_salt, 16384, 8, 8, 32)
+        pass_factor = int.from_bytes(prefactor, 'big')
     else:
         owner_salt = os.urandom(4)
         lot_sequence = struct.pack('>I', (lot << 12) | sequence)
         owner_entropy = owner_salt + lot_sequence
-
-    prefactor = util.scrypt(_normalize_utf(passphrase), owner_salt, 16384, 8, 8, 32)
-    if lot is None:
-        pass_factor = string_to_number(prefactor)
-    else:
-        pass_factor = string_to_number(util.hash.sha256d(prefactor + owner_entropy))
+        prefactor = scrypt.hash(_normalize_utf(passphrase), owner_salt, 16384, 8, 8, 32)
+        pass_factor = int.from_bytes(util.hash.sha256d(prefactor + owner_entropy), 'big')
 
     # compute the public point
     point = curve.generator * pass_factor
-    pass_point = _key_from_point(point, True)
+    pass_point = _key_from_point(point, compressed=True)
 
-    prefix = '\x2c\xe9\xb3\xe1\xff\x39\xe2'
-    if lot is None:
-        prefix += chr(0x53)
-    else:
-        prefix += chr(0x51)
+    prefix = b'\x2c\xe9\xb3\xe1\xff\x39\xe2\x53' if lot is None else b'\x2c\xe9\xb3\xe1\xff\x39\xe2\x51'
 
     # make a nice human readable string, beginning with "passphrase"
     return util.base58.encode_check(prefix + owner_entropy + pass_point)
 
+def _generate_confirmation_code(flagbyte, ownerentropy, factorb, derived_half1, derived_half2, address_hash):
+    """
+    Generates a confirmation code for the owner, as specified in BIP38.
+    See https://github.com/bitcoin/bips/blob/master/bip-0038.mediawiki for more about the process and params.
+
+    :return: The confirmation code (as str).
+    """
+    # generate the confirmation code point
+    point = curve.generator * factorb
+    pointb = _key_from_point(point, True)
+
+    # XOR it
+    pointb_prefix = pointb[0] ^ (derived_half2[31] & 0x01)
+
+    # Encryption of pointb
+    aes = AES.new(derived_half2)
+    intbx1 = int.from_bytes(pointb[1:17], 'big') ^ int.from_bytes(derived_half1[:16], 'big')
+    intbx2 = int.from_bytes(pointb[17:], 'big') ^ int.from_bytes(derived_half1[16:], 'big')
+    pointbx1 = aes.encrypt(intbx1.to_bytes(util.base58.sizeof(intbx1), 'big'))
+    pointbx2 = aes.encrypt(intbx2.to_bytes(util.base58.sizeof(intbx2), 'big'))
+    encrypted_pointb = pointb_prefix.to_bytes(util.base58.sizeof(pointb_prefix), 'big') + pointbx1 + pointbx2
+
+    return util.base58.encode_check(b'\x64\x3b\xf6\xa8\x9a' + flagbyte.to_bytes(util.base58.sizeof(flagbyte), 'big')
+                                    + address_hash + ownerentropy + encrypted_pointb)
+
 
 def _generate_printed_address(intermediate_code, compressed, coin = coins.Bitcoin):
+    """
+    Generates a BIP38 encrypted private key with EC multiply.
+    See https://github.com/bitcoin/bips/blob/master/bip-0038.mediawiki for more about the process.
 
+    :param intermediate_code: The pass used to encrypt the key and generated by the owner (bytes).
+    :param compressed: Whether or not this key will be used to generate a compressed public key (bool).
+    :param coin: The network, Bitcoin by default.
+    :return: An instance of the Encrypted_address class.
+    """
     payload = util.base58.decode_check(intermediate_code)
 
     if len(payload) != 49:
         raise ValueError('invalid intermediate code')
-
-    if payload[0:7] != '\x2c\xe9\xb3\xe1\xff\x39\xe2':
+    if payload[0:7] != b'\x2c\xe9\xb3\xe1\xff\x39\xe2':
         raise ValueError('invalid intermediate code prefix')
 
-    # de-searialize the payload
-    magic_suffix = ord(payload[7])
+    # de-serialize the payload
+    magic_suffix = payload[7]
     owner_entropy = payload[8:16]
     pass_point = payload[16:49]
 
@@ -514,56 +540,42 @@ def _generate_printed_address(intermediate_code, compressed, coin = coins.Bitcoi
         raise ValueError('invalid intermediate code prefix')
 
     # generate the random seedb
-    seedb = os.urandom(24)
+    seedb = b'\x98+\x9e\x1d(T\xe5\x8a\xf5\xa3=\xa1^~\xffgX\x1a\xa8\xa3!\xfekA'#os.urandom(24)
     factorb = string_to_number(util.sha256d(seedb))
 
     # compute the public point (and address)
     point = _key_to_point(pass_point) * factorb
     public_key = _key_from_point(point, compressed)
 
-    address = util.key.publickey_to_address(public_key, coin.address_version)
+    generated_address = util.key.publickey_to_address(public_key, coin.address_version)
 
-    address_hash = util.sha256d(address)[:4]
+    address_hash = util.sha256d(generated_address.encode())[:4]
 
     # key for encrypting the seedb (from the public point)
     salt = address_hash + owner_entropy
-    derived_key = util.scrypt(pass_point, salt, 1024, 1, 1, 64)
+    derived_key = scrypt.hash(pass_point, salt, 1024, 1, 1, 64)
     (derived_half1, derived_half2) = (derived_key[:32], derived_key[32:])
 
-    aes = AES(derived_half2)
+    aes = AES.new(derived_half2)
 
-    # encrypt the seedb; it's only 24 bytes, so we can nest to save space
-    encrypted_half1 = _encrypt_xor(seedb[:16], derived_half1[:16], aes)
-    encrypted_half2 = _encrypt_xor(encrypted_half1[8:16] + seedb[16:24],
-                                   derived_half1[16:], aes)
+    int1 = int.from_bytes(seedb[:16], 'big') ^ int.from_bytes(derived_half1[:16], 'big')
+    encrypted_half1 = aes.encrypt(int1.to_bytes(util.base58.sizeof(int1), 'big'))
+    int2 = int.from_bytes(encrypted_half1[8:16] + seedb[16:24], 'big') ^ int.from_bytes(derived_half1[16:], 'big')
+    encrypted_half2 = aes.encrypt(int2.to_bytes(util.base58.sizeof(int2), 'big'))
 
     # final binary private key
-    payload = ('\x01\x43' + chr(flagbyte) + address_hash + owner_entropy +
-               encrypted_half1[0:8] + encrypted_half2)
+    payload = (b'\x01\x43' + flagbyte.to_bytes(util.base58.sizeof(flagbyte), 'big') +
+               address_hash + owner_entropy + encrypted_half1[0:8] + encrypted_half2)
     private_key = util.base58.encode_check(payload)
 
-    # generate the confirmation code point
-    point = curve.generator * factorb
-    pointb = _key_from_point(point, True)
-
-    # encrypt the confirmation code point
-    pointb_prefix = chr(ord(pointb[0]) ^ (ord(derived_half2[31]) & 0x01))
-    pointbx1 = _encrypt_xor(pointb[1:17], derived_half1[:16], aes)
-    pointbx2 = _encrypt_xor(pointb[17:], derived_half1[16:], aes)
-    encrypted_pointb = pointb_prefix + pointbx1 + pointbx2
-
-    # make a nice human readable string, beginning with "cfrm"
-    prefix = "\x64\x3b\xf6\xa8\x9a"
-    payload = (prefix + chr(flagbyte) + address_hash + owner_entropy +
-               encrypted_pointb)
-    confirmation_code = util.base58.encode_check(payload)
+    confirmation_code = _generate_confirmation_code(flagbyte, owner_entropy, factorb, derived_half1, derived_half2, address_hash)
 
     # wrap it up in a nice object
     self = EncryptedPrintedAddress.__new__(EncryptedPrintedAddress)
     BaseAddress.__init__(self, private_key = private_key, coin = coin)
 
     self._public_key = public_key
-    self._address = address
+    self._address = generated_address
 
     self._lot = lot
     self._sequence = sequence
@@ -574,16 +586,17 @@ def _generate_printed_address(intermediate_code, compressed, coin = coins.Bitcoi
 
 
 def _check_confirmation_code(confirmation_code, passphrase, coin = coins.Bitcoin):
-    '''Verifies a confirmation code with passphrase and returns a
-       Confirmation object.'''
+    """
+    Verifies if the confirmation code matches the passphrase by recalculating the address.
 
+    :return: An instance of the Confirmation class.
+    """
     payload = util.base58.decode_check(confirmation_code)
-    if payload[:5] != '\x64\x3b\xf6\xa8\x9a':
+    if payload[:5] != b'\x64\x3b\xf6\xa8\x9a':
         raise ValueError('invalid confirmation code prefix')
 
     # de-serialize the payload
-    flagbyte = ord(payload[5])
-
+    flagbyte = payload[5]
     address_hash = payload[6:10]
     owner_entropy = payload[10:18]
     encrypted_pointb = payload[18:]
@@ -603,11 +616,11 @@ def _check_confirmation_code(confirmation_code, passphrase, coin = coins.Bitcoin
         sequence = lot_sequence & 0xfff
         owner_salt = owner_entropy[:4]
 
-    prefactor = util.scrypt(_normalize_utf(passphrase), owner_salt, 16384, 8, 8, 32)
+    prefactor = scrypt.hash(_normalize_utf(passphrase), owner_salt, 16384, 8, 8, 32)
     if lot is None:
-        pass_factor = string_to_number(prefactor)
+        pass_factor = int.from_bytes(prefactor, 'big')
     else:
-        pass_factor = string_to_number(util.hash.sha256d(prefactor + owner_entropy))
+        pass_factor = int.from_bytes(util.hash.sha256d(prefactor + owner_entropy), 'big')
 
     # determine the passpoint
     point = curve.generator * pass_factor
@@ -615,16 +628,25 @@ def _check_confirmation_code(confirmation_code, passphrase, coin = coins.Bitcoin
 
     # derive the key that was used to encrypt the pointb
     salt = address_hash + owner_entropy
-    derived_key = util.scrypt(pass_point, salt, 1024, 1, 1, 64)
+    derived_key = scrypt.hash(pass_point, salt, 1024, 1, 1, 64)
     (derived_half1, derived_half2) = (derived_key[:32], derived_key[32:])
 
-    aes = AES(derived_half2)
+    aes = AES.new(derived_half2)
 
-    # decrypt the pointb
-    pointb_prefix = ord(encrypted_pointb[0]) ^ (ord(derived_half2[31]) & 0x01)
-    pointbx1 = _decrypt_xor(encrypted_pointb[1:17], derived_half1[:16], aes)
-    pointbx2 = _decrypt_xor(encrypted_pointb[17:], derived_half1[16:], aes)
-    pointb = chr(pointb_prefix) + pointbx1 + pointbx2
+    # decrypt the pointb by doing the reverse scheme done in generate_confirmation_code :
+    # The prefix
+    pointb_prefix = encrypted_pointb[0] ^ (derived_half2[31] & 0x01)
+    # The AES decryption
+    pointbx1 = aes.decrypt(encrypted_pointb[1:17])
+    pointbx2 = aes.decrypt(encrypted_pointb[17:])
+    # The XOR
+    intb1 = int.from_bytes(pointbx1, 'big') ^ int.from_bytes(derived_half1[:16], 'big')
+    intb2 = int.from_bytes(pointbx2, 'big') ^ int.from_bytes(derived_half1[16:], 'big')
+    # We convert it to bytes
+    pointb1 = intb1.to_bytes(util.base58.sizeof(intb1), 'big')
+    pointb2 = intb2.to_bytes(util.base58.sizeof(intb2), 'big')
+    # And append everything to get the point
+    pointb = pointb_prefix.to_bytes(util.base58.sizeof(pointb_prefix), 'big') + pointb1 + pointb2
 
     # compute the public key (and address)
     point = _key_to_point(pointb) * pass_factor
@@ -633,7 +655,7 @@ def _check_confirmation_code(confirmation_code, passphrase, coin = coins.Bitcoin
     address = util.key.publickey_to_address(public_key, coin.address_version)
 
     # verify the checksum
-    if util.sha256d(address)[:4] != address_hash:
+    if util.sha256d(address.encode())[:4] != address_hash:
         raise ValueError('invalid passphrase')
 
     # wrap it up in a nice object
@@ -652,22 +674,26 @@ def _check_confirmation_code(confirmation_code, passphrase, coin = coins.Bitcoin
 
 
 def _decrypt_printed_private_key(private_key, passphrase, coin = coins.Bitcoin):
-    'Decrypts a printed private key returning an instance of PrintedAddress.'
+    """
+    Decrypts an EC-multiply BIP38 encrypted private key.
 
+    :param private_key: The encrypted private key.
+    :param passphrase: The passphrase with which the key was encrypted
+    :param coin: The network, Bitcoin by default.
+    :return: An instance of the PrintedAddress class.
+    """
     payload = util.base58.decode_check(private_key)
 
-    if payload[0:2] != '\x01\x43':
+    if payload[:2] != b'\x01\x43':
         raise ValueError('invalid printed address private key prefix')
 
     if len(payload) != 39:
         raise ValueError('invalid printed address private key length')
 
     # de-serialize the payload
-    flagbyte = ord(payload[2])
-
+    flagbyte = payload[2]
     address_hash = payload[3:7]
     owner_entropy = payload[7:15]
-
     encrypted_quarter1 = payload[15:23]
     encrypted_half2 = payload[23:39]
 
@@ -683,32 +709,34 @@ def _decrypt_printed_private_key(private_key, passphrase, coin = coins.Bitcoin):
         lot_sequence = struct.unpack('>I', owner_entropy[4:8])[0]
         lot = lot_sequence >> 12
         sequence = lot_sequence & 0xfff
-        owner_salt = owner_entropy[0:4]
+        owner_salt = owner_entropy[:4]
 
-    prefactor = util.scrypt(_normalize_utf(passphrase), owner_salt, 16384, 8, 8, 32)
+    prefactor = scrypt.hash(_normalize_utf(passphrase), owner_salt, 16384, 8, 8, 32)
     if lot is None:
-        pass_factor = string_to_number(prefactor)
+        pass_factor = int.from_bytes(prefactor, 'big')
     else:
-        pass_factor = string_to_number(util.hash.sha256d(prefactor + owner_entropy))
+        pass_factor = int.from_bytes(util.hash.sha256d(prefactor + owner_entropy), 'big')
 
     # compute the public point
     point = curve.generator * pass_factor
     pass_point = _key_from_point(point, True)
 
     # derive the key that was used to encrypt the seedb; based on the public point
-    derived_key = util.scrypt(pass_point, address_hash + owner_entropy, 1024, 1, 1, 64)
+    derived_key = scrypt.hash(pass_point, address_hash + owner_entropy, 1024, 1, 1, 64)
     (derived_half1, derived_half2) = (derived_key[:32], derived_key[32:])
 
-    aes = AES(derived_half2)
+    aes = AES.new(derived_half2)
 
     # decrypt the seedb (it was nested, so we work backward)
-    decrypted_half2 = _decrypt_xor(encrypted_half2, derived_half1[16:], aes)
+    int_half2 = int.from_bytes(aes.decrypt(encrypted_half2), 'big') ^ int.from_bytes(derived_half1[16:], 'big')
+    decrypted_half2 = int_half2.to_bytes(util.base58.sizeof(int_half2), 'big')
     encrypted_half1 = encrypted_quarter1 + decrypted_half2[:8]
-    decrypted_half1 = _decrypt_xor(encrypted_half1, derived_half1[:16], aes)
+    int_half1 = int.from_bytes(aes.decrypt(encrypted_half1), 'big') ^ int.from_bytes(derived_half1[:16], 'big')
+    decrypted_half1 = int_half1.to_bytes(util.base58.sizeof(int_half1), 'big')
 
     # compute the seedb
     seedb = decrypted_half1 + decrypted_half2[8:16]
-    factorb = string_to_number(util.sha256d(seedb))
+    factorb = int.from_bytes(util.sha256d(seedb), 'big')
 
     # compute the secret exponent
     secexp = (factorb * pass_factor) % curve.order
@@ -716,7 +744,7 @@ def _decrypt_printed_private_key(private_key, passphrase, coin = coins.Bitcoin):
     # convert it to a private key
     private_key = number_to_string(secexp, curve.order)
     if compressed:
-        private_key += chr(0x01)
+        private_key += b'\x01'
 
     # wrap it up in a nice object
     self = PrintedAddress.__new__(PrintedAddress)
@@ -726,13 +754,11 @@ def _decrypt_printed_private_key(private_key, passphrase, coin = coins.Bitcoin):
     self._sequence = sequence
 
     # verify the checksum
-    if address_hash != util.sha256d(self.address)[:4]:
+    if address_hash != util.sha256d(self.address.encode())[:4]:
         raise ValueError('incorrect passphrase')
 
     return self
 
-#def requires_passphrase(private_key):
-#    return private_key.startswith('6P')
 
 def get_address(private_key, passphrase = None, coin = coins.Bitcoin):
     '''Detects the type of private key uses the correct class to instantiate

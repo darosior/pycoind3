@@ -62,7 +62,6 @@ TestsPrinted = [
 ]
 
 for (address, private_key) in Tests:
-
     # test address hashes
     a = pycoind.wallet.Address(private_key = private_key)
     if a.address != address:
@@ -80,8 +79,6 @@ for (address, private_key) in Tests:
         raise Exception('address compression broken')
 
 for (passphrase, encrypted, decrypted) in TestsEncrypted:
-
-    print(passphrase, encrypted, decrypted)
     # test encrypted addresses against test vectors
     a = pycoind.wallet.EncryptedAddress(encrypted)
     d = a.decrypt(passphrase)
@@ -96,7 +93,6 @@ for (passphrase, encrypted, decrypted) in TestsEncrypted:
         raise Exception('encrypted then decrypted private key fail')
 
 for (passphrase, code, confirm, encrypted, decrypted, address, lot, sequence) in TestsPrinted:
-
     # test confirmation code
     if confirm:
         c = pycoind.wallet.PrintedAddress.confirm(confirm, passphrase)
@@ -117,7 +113,7 @@ for (passphrase, code, confirm, encrypted, decrypted, address, lot, sequence) in
     p = pycoind.wallet.PrintedAddress.generate(code, False)
     c = pycoind.wallet.PrintedAddress.confirm(p.confirmation_code, passphrase)
     if c.address != p.address or c.lot != lot or c.sequence != sequence:
-        raise Exception('confrimation code did not validate address')
+        raise Exception('confirmation code did not validate address')
     d = p.decrypt(passphrase)
     if d.address != p.address:
         raise Exception('EC-multiply intermediate address does not match decrypted address')
@@ -147,4 +143,4 @@ for (passphrase, code, confirm, encrypted, decrypted, address, lot, sequence) in
     if d.lot != lot or d.sequence != sequence:
         raise Exception('EC-multiply private key sequence or lot wrong')
 
-
+print('Congratulations, all tests have passed.')
