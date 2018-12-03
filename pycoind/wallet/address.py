@@ -555,7 +555,7 @@ def _generate_printed_address(intermediate_code, compressed, coin = coins.Bitcoi
         raise ValueError('invalid intermediate code prefix')
 
     # generate the random seedb
-    seedb = b'\x98+\x9e\x1d(T\xe5\x8a\xf5\xa3=\xa1^~\xffgX\x1a\xa8\xa3!\xfekA'#os.urandom(24)
+    seedb = os.urandom(24)
     factorb = string_to_number(util.sha256d(seedb))
 
     # compute the public point (and address)
