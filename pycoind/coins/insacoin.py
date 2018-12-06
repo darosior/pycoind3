@@ -63,7 +63,8 @@ class Insacoin(coin.Coin):
 
     alert_public_key = binascii.unhexlify('04978a60a55a728d1d12608d432b33d5cce8405a4d39a7b50aa9d9e8a22e62b74e9882a52108072104ad3d0356e457751879dfbef27d051ce421968259184482fc')
     address_version = 0x66
-
+    secret_key = 0xb0
+    
     block_height_guess = [
     ]
 
