@@ -223,7 +223,7 @@ class ByteVector(object):
     #    return hex(self.value)
 
     def __repr__(self):
-        return '<ByteVector value=%d vector=%s>' % (self.value, self.vector.encode('hex'))
+        return '<ByteVector value=%d vector=%s>' % (self.value, self.vector)
 
     def __str__(self):
         return repr(self)

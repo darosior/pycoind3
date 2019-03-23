@@ -1,9 +1,9 @@
 import sys
 sys.path.append('.')
-
+import pycoind
 import unittest
 
-import pycoind
+
 
 class TestBlockchain(unittest.TestCase):
 

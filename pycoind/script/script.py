@@ -23,9 +23,9 @@
 
 import inspect
 import struct
+import binascii
 
 
-from .bytevector import ByteVector
 from . import opcodes
 
 from .. import coins
@@ -35,10 +35,6 @@ from .. import util
 from ..protocol import format
 
 __all__ = ['Script', 'Tokenizer']
-
-# Convenient constants
-Zero = ByteVector.from_value(0)
-One = ByteVector.from_value(1)
 
 def _is_pubkey(opcode, bytes, data):
     if opcode != Tokenizer.OP_LITERAL:
@@ -108,13 +104,14 @@ Templates = [
 ]
 
 def _stack_op(stack, func):
-    '''Replaces the top N items from the stack with the items in the list
-       returned by the callable func; N is func's argument count.
+    """Replaces the top items of the stack.
+    N items are replaced by the ones in the list returned by the callable function, with N the size
+    of this list.
 
-       The result must return a list.
-
-       False is returned on error, otherwise True.'''
-
+    :param stack: The stack to replace the items from
+    :param func: A callable function returning a list
+    :return: False on error, True otherwise
+    """
     # not enough arguments
     count = len(inspect.getargspec(func).args)
     if len(stack) < count: return False
@@ -128,16 +125,13 @@ def _stack_op(stack, func):
     return True
 
 
-def _math_op(stack, func, check_overflow = True):
-    '''Replaces the top N items from the stack with the result of the callable
-       func; N is func's argument count.
+def _math_op(stack, func, check_overflow=True):
+    """Replaces the top items from the stack with the result of the callable function.
+    N items are replaced with N the argument count of `func` the callable function.
 
-       A boolean result will push either a 0 or 1 on the stack. None will push
-       nothing. Otherwise, the result must be a ByteVector.
-
-       False is returned on error, otherwise True.'''
-
-    # not enough arguments
+    :param check_overflow:     
+    :return: (bool) False on error, otherwise True.
+    """
     count = len(inspect.getargspec(func).args)
     if len(stack) < count: return False
     args = stack[-count:]
@@ -153,29 +147,26 @@ def _math_op(stack, func, check_overflow = True):
 
     # convert booleans to One or Zero
     if result == True:
-        result = One
+        result = b'\x01'
     elif result == False:
-        result = Zero
-
+        result = b'\x00'
     if result is not None:
         stack.append(result)
-
     return True
 
 
 def _hash_op(stack, func):
-    '''Replaces the top of the stack with the result of the callable func.
+    """Replaces the top item of the stack with the result of the callable func
+    The result of the callable function `func` must be bytes.
 
-       The result must be a ByteVector.
-
-       False is returned on error, otherwise True.'''
-
+    :return: (bool) False on error, otherwise True.
+    """
     # not enough arguments
     if len(stack) < 1: return False
 
     # hash and push
-    value = func(stack.pop().vector)
-    stack.append(ByteVector(value))
+    value = func(stack.pop())
+    stack.append(value)
 
     return True
 
@@ -189,11 +180,8 @@ def check_signature(signature, public_key, hash_type, subscript, transaction, in
         raise Exception('@todo: should I check for this?')
     signature = signature[:-1]
 
-    #print hash_type
-
     # SIGHASH_ALL
     if (hash_type & 0x1f) == 0x01 or hash_type == 0:
-        #print "ALL"
         tx_ins = [ ]
         for (index, tx_in) in enumerate(transaction.inputs):
             script = ''
@@ -207,7 +195,6 @@ def check_signature(signature, public_key, hash_type, subscript, transaction, in
 
     # SIGHASH_NONE (other tx_in.sequence = 0, tx_out = [ ])
     elif (hash_type & 0x1f) == 0x02:
-        #print "NONE"
         tx_ins = [ ]
         index = 0
         for tx_in in transaction.inputs:
@@ -225,7 +212,6 @@ def check_signature(signature, public_key, hash_type, subscript, transaction, in
 
     # SIGHASH_SINGLE (len(tx_out) = input_index + 1, other outputs = (-1, ''), other tx_in.sequence = 0)
     elif (hash_type & 0x1f) == 0x03:
-        #print "SINGLE"
         tx_ins = [ ]
         index = 0
         for tx_in in transaction.inputs:
@@ -253,7 +239,6 @@ def check_signature(signature, public_key, hash_type, subscript, transaction, in
 
     # SIGHASH_ANYONECANPAY
     if (hash_type & 0x80) == 0x80:
-        #print "ANYONE"
         tx_in = transaction.inputs[input_index]
         tx_ins = [protocol.TxnIn(tx_in.previous_output, subscript, tx_in.sequence)]
 
@@ -265,11 +250,6 @@ def check_signature(signature, public_key, hash_type, subscript, transaction, in
     sig_hash = struct.pack('<I', hash_type)
     payload = tx_copy.binary() + sig_hash
 
-    # verify the data
-    #print "PK", public_key.encode('hex')
-    #print "S", signature.encode('hex'), input_index
-    #print "T", transaction
-    #print "I", input_index
     return util.ecc.verify(payload, public_key, signature)
 
 
@@ -283,30 +263,35 @@ class FlexTxn(protocol.Txn):
     ]
 
 
-class Tokenizer(object):
-    '''Tokenizes a script into tokens.
-
-       Literals can be accessed with get_value and have the opcode 0x1ff.
-
-       The *VERIFY opcodes are expanded into the two equivalent opcodes.'''
+class Tokenizer():
+    """Tokenizes a script into tokens.
+    Literals can be accessed with get_value and have the opcode 0x1ff.
+    """
 
     OP_LITERAL = 0x1ff
 
-    def __init__(self, script, expand_verify = False):
+    def __init__(self, script, expand_verify=False):
+        """
+        :param script: The script to parse as bytes
+        :param expand_verify: Whether to expand the *VERIFIY opcodes
+        """
         self._script = script
         self._expand_verify = expand_verify
-        self._tokens = [ ]
+        self._tokens = []
         self._process(script)
 
     def append(self, script):
+        """Appends another script, tokenizing it.
+        Usually it will be used to append the locking script to the unlocking one.
+        :param script: The new opcodes as bytes
+        """
         self._script += script
         self._process(script)
 
-    def get_subscript(self, start_index = 0, filter = None):
-        '''Rebuild the script from token start_index, using the callable
-           removing tokens that return False for filter(opcode, bytes, value)
-           where bytes is the original bytes and value is any literal value.'''
-
+    def get_subscript(self, start_index=0, filter=None):
+        """Rebuild the script from `start_index`, filtering using `filter` func.
+        The callable `filter` removes tokens that return False for filter(opcode, bytes, value) where bytes is the original bytes and value is any literal value.
+        """
         output = ''
         for (opcode, bytes, value) in self._tokens[start_index:]:
             if filter and not list(filter(opcode, bytes, value)):
@@ -315,23 +300,20 @@ class Tokenizer(object):
         return output
 
     def match_template(self, template):
-        'Given a template, return True if this script matches.'
-
+        """Whether the script matches a given template.
+        :param template: The template to match (P2PK, P2PKH,..)
+        """
         if not template[0](self):
             return False
-
         # ((opcode, bytes, value), template_target)
         for ((o, b, v), t) in zip(self._tokens, template[1:]):
-
             # callable, check the value
             if callable(t):
                 if not t(o, b, v):
                     return False
-
             # otherwise, compare opcode
             elif t != o:
                 return False
-
         return True
 
     _Verify = {
@@ -342,88 +324,83 @@ class Tokenizer(object):
     }
 
     def _process(self, script):
-        'Parse the script into tokens. Internal use only.'
-
+        """Parse the script into tokens.
+        :param script: The script to parse
+        """
         while script:
-            opcode = ord(script[0])
-            bytes = script[0]
+            opcode = script[0]
+            opcode_bytes = script[0].to_bytes(1, 'big')
             script = script[1:]
             value = None
-
             verify = False
 
             if opcode == opcodes.OP_0:
-                value = Zero
+                value = b'\x00'
                 opcode = Tokenizer.OP_LITERAL
 
             elif 1 <= opcode <= 78:
-                length = opcode
-
+                pushdata_length = opcode
                 if opcodes.OP_PUSHDATA1 <= opcode <= opcodes.OP_PUSHDATA4:
                     op_length = [1, 2, 4][opcode - opcodes.OP_PUSHDATA1]
-                    format = ['<B', '<H', '<I'][opcode - opcodes.OP_PUSHDATA1]
-                    length = struct.unpack(format, script[:op_length])[0]
-                    bytes += script[:op_length]
+                    pushdata_length = int.from_bytes(script[:op_length], 'little')
+                    opcode_bytes += script[:op_length]
                     script = script[op_length:]
 
-                value = ByteVector(vector = script[:length])
-                bytes += script[:length]
-                script = script[length:]
-                if len(value) != length:
-                    raise Exception('not enought script for literal')
+                # The data to be pushed
+                value = script[:pushdata_length]
+                opcode_bytes += value
+                # Remove the data to be pushed from the script
+                script = script[pushdata_length:]
+                if len(value) != pushdata_length:
+                    raise Exception('The pushdata opcode does not match the length of the data to be pushed')
                 opcode = Tokenizer.OP_LITERAL
 
             elif opcode == opcodes.OP_1NEGATE:
                 opcode = Tokenizer.OP_LITERAL
-                value = ByteVector.from_value(-1)
+                value = int(-1).to_bytes(1, 'big', signed=True)
 
             elif opcode == opcodes.OP_TRUE:
                 opcode = Tokenizer.OP_LITERAL
-                value = ByteVector.from_value(1)
+                value = int(1).to_bytes(1, 'big')
 
             elif opcodes.OP_1 <= opcode <= opcodes.OP_16:
-                value = ByteVector.from_value(opcode - opcodes.OP_1 + 1)
+                value = int(opcode - opcodes.OP_1 + 1).to_bytes(1, 'big')
                 opcode = Tokenizer.OP_LITERAL
 
             elif self._expand_verify and opcode in self._Verify:
                 opcode = self._Verify[opcode]
                 verify = True
 
-            self._tokens.append((opcode, bytes, value))
-
+            self._tokens.append((opcode, opcode_bytes, value))
             if verify:
                 self._tokens.append((opcodes.OP_VERIFY, '', None))
 
     def get_bytes(self, index):
-        'Get the original bytes used for the opcode and value'
-
+        """Get the opcode at position `index` as bytes"""
         return self._tokens[index][1]
-
 
     def get_value(self, index):
         'Get the value for a literal.'
-
         return self._tokens[index][2]
 
     def __len__(self):
         return len(self._tokens)
 
-    def __getitem__(self, name):
-        return self._tokens[name][0]
+    def __getitem__(self, index):
+        return self._tokens[index][0]
 
     def __iter__(self):
         for (opcode, bytes, value) in self._tokens:
             yield opcode
 
     def __str__(self):
-        output = [ ]
+        output = []
         for (opcode, bytes, value) in self._tokens:
             if opcode == Tokenizer.OP_LITERAL:
-                output.append(value.vector.encode('hex'))
+                output.append(str(int.from_bytes(value, 'big')))
             else:
                 if bytes:
-                    output.append(opcodes.get_opcode_name(ord(bytes[0])))
-
+                    output.append(opcodes.get_opcode_name(bytes[0]))
         return " ".join(output)
 
 
@@ -434,11 +411,13 @@ class Script(object):
 
     @property
     def output_count(self):
+        """Returns the number of outputs in the transaction"""
         return len(self._transaction.outputs)
 
     def output_address(self, output_index):
-        pk_script = self._transaction.outputs[output_index].pk_script
-        tokens = Tokenizer(pk_script)
+        """Returns the address of the output at a given position in the outputs list"""
+        locking_script = self._transaction.outputs[output_index].pk_script
+        tokens = Tokenizer(locking_script)
 
         if tokens.match_template(TEMPLATE_PAY_TO_PUBKEY_HASH):
             pubkeyhash = tokens.get_value(2).vector
@@ -447,7 +426,6 @@ class Script(object):
         if tokens.match_template(TEMPLATE_PAY_TO_PUBKEY):
             pubkey = tokens.get_value(0).vector
             return util.key.publickey_to_address(pubkey, self._coin.address_version)
-
         return None
 
     #def previous_output(self, index):
@@ -455,18 +433,20 @@ class Script(object):
     #    return (po.hash, po.index)
 
     def script_form(self, output_index):
-        pk_script = self._transaction.outputs[output_index].pk_script
-        tokens = Tokenizer(pk_script)
-        for (sf, template) in Templates:
+        """Returns the type of the script. Also named `form` or `template` in this code :'("""
+        locking_script = self._transaction.outputs[output_index].pk_script
+        tokens = Tokenizer(locking_script)
+        for (form, template) in Templates:
             if tokens.match_template(template):
-                return sf
+                return form
         return SCRIPT_FORM_NON_STANDARD
 
     def is_standard_script(self, output_index):
-        pk_script = self._transaction.outputs[output_index]
-        tokens = Tokenize(pk_script, expand_verify = False)
-        for sf in STANDARD_SCRIPT_FORMS:
-            if tokens.match_template(Templates[sf]):
+        """Returns (bool) whether the script is standard or not"""
+        locking_script = self._transaction.outputs[output_index]
+        tokens = Tokenize(locking_script, expand_verify = False)
+        for form in STANDARD_SCRIPT_FORMS:
+            if tokens.match_template(Templates[form]):
                 return True
         return False
 
@@ -479,11 +459,9 @@ class Script(object):
         return self.process(input.signature_script, pk_script, self._transaction, input_index)
 
     def verify(self):
-        '''Return True if all transaction inputs can be verified against their
-           previous output.'''
-
+        """Verifies all outputs against inputs
+        :return: A boolean, True if all outputs are verified, False otherwise"""
         for i in range(0, len(self._transaction.inputs)):
-
             # ignore coinbase (generation transaction input)
             if self._transaction.index == 0 and i == 0: continue
 
@@ -491,25 +469,28 @@ class Script(object):
             input = self._transaction.inputs[i]
             previous_output = self._transaction.previous_output(i)
             if not self.verify_input(i, previous_output.pk_script):
-                #print "INVALID:", self._transaction.hash.encode('hex'), i
                 return False
 
         return True
 
     @staticmethod
-    def process(signature_script, pk_script, transaction, input_index, hash_type = 0):
+    def process(unlocking_script, locking_script, transaction, input_index, hash_type = 0):
+        """Executes the script
+        :param unlocking_script: The unlocking script (/script_sig) as bytes
+        :param locking_script: The locking script (/script_pubkey) as bytes
+        :param transaction: The transaction containing this script, an instance of the Transaction class 
+        :param input_index:
+        """
 
         # tokenize (placing the last code separator after the signature script)
-        tokens = Tokenizer(signature_script, expand_verify = True)
-        signature_length = len(tokens)
-        tokens.append(pk_script)
-        last_codeseparator = signature_length
-
-        #print str(tokens)
+        tokens = Tokenizer(unlocking_script, expand_verify=True)
+        unlocking_length = len(tokens)
+        tokens.append(locking_script)
+        last_codeseparator = unlocking_length
 
         # check for VERY forbidden opcodes (see "reserved Words" on the wiki)
         for token in tokens:
-            if token in (opcodes.OP_VERIF, opcodes.OP_VERNOTIF):
+            if token in {opcodes.OP_VERIF, opcodes.OP_VERNOTIF}:
                 return False
 
         # stack of entered if statments' condition values
@@ -521,10 +502,6 @@ class Script(object):
 
         for pc in range(0, len(tokens)):
             opcode = tokens[pc]
-
-            #print "STACK:", (opcodes.OPCODE_NAMES[min(opcode, 255)], repr(tokens.get_value(pc)))
-            #print "  " + "\n  ".join("%s (%d)" % (i.vector.encode('hex'), i.value) for i in stack)
-            #print
 
             # handle if before anything else
             if opcode == opcodes.OP_IF:
@@ -580,7 +557,7 @@ class Script(object):
                     stack.append(stack[-1])
 
             elif opcode == opcodes.OP_DEPTH:
-                stack.append(ByteVector.from_value(len(stack)))
+                stack.append(len(stack).to_bytes(1, 'big'))
 
             elif opcode == opcodes.OP_DROP:
                 if not _stack_op(stack, lambda x: [ ]):
@@ -600,13 +577,13 @@ class Script(object):
 
             elif opcode == opcodes.OP_PICK:
                 if len(stack) < 2: return False
-                n = stack.pop().value + 1
+                n = int.from_bytes(stack.pop(), 'big') + 1
                 if not (0 <= n <= len(stack)): return False
                 stack.append(stack[-n])
 
             elif opcode == opcodes.OP_ROLL:
                 if len(stack) < 2: return False
-                n = stack.pop().value + 1
+                n = int.from_bytes(stack.pop(), 'big') + 1
                 if not (0 <= n <= len(stack)): return False
                 stack.append(stack.pop(-n))
 
@@ -649,8 +626,9 @@ class Script(object):
             ### Splice Operations
 
             elif opcode == opcodes.OP_SIZE:
-                if len(stack) < 1: return False
-                stack.append(ByteVector.from_value(len(stack[-1])))
+                stack_length = len(stack)
+                if stack_length < 1: return False
+                stack.append(stack_length.to_bytes(stack_length.bit_length()//8+1, 'big'))
 
             ### Bitwise Logic Operations
 
@@ -661,35 +639,38 @@ class Script(object):
             ### Arithmetic Operations
 
             elif opcode == opcodes.OP_1ADD:
-                if not _math_op(stack, lambda a: a + One):
+                if not _math_op(stack, lambda a: int(int.from_bytes(a, 'big', signed=True) + 1).to_bytes(1, 'big', signed=True)):
                     return False
 
             elif opcode == opcodes.OP_1SUB:
-                if not _math_op(stack, lambda a: a - One):
+                if not _math_op(stack, lambda a: int(int.from_bytes(a, 'big', signed=True) - 1).to_bytes(1, 'big', signed=True)):
                     return False
 
             elif opcode == opcodes.OP_NEGATE:
-                if not _math_op(stack, lambda a: -a):
+                if not _math_op(stack, lambda a: int(-int.from_bytes(a, 'big', signed=True)).to_bytes(1, 'big', signed=True)):
                     return False
-
+            
             elif opcode == opcodes.OP_ABS:
-                if not _math_op(stack, lambda a: abs(a)):
+                if not _math_op(stack, lambda a: int(abs(int.from_bytes(a, 'big', signed=True))).to_bytes(1, 'big', signed=True)):
                     return False
 
             elif opcode == opcodes.OP_NOT:
-                if not _math_op(stack, lambda a: bool(a == 0)):
+                if not _math_op(stack, lambda a: a == 0):
                     return False
 
             elif opcode == opcodes.OP_0NOTEQUAL:
-                if not _math_op(stack, lambda a: bool(a != 0)):
+                if not _math_op(stack, lambda a: a != 0):
                     return False
 
             elif opcode == opcodes.OP_ADD:
-                if not _math_op(stack, lambda a, b: a + b):
+                # TODO: cleaning
+                if not _math_op(stack, lambda a, b: int(int.from_bytes(a, 'big', signed=True) + int.from_bytes(b, 'big', signed=True))
+                        .to_bytes(len(a)+len(b), 'big', signed=True)):
                     return False
 
             elif opcode == opcodes.OP_SUB:
-                if not _math_op(stack, lambda a, b: a - b):
+                if not _math_op(stack, lambda a, b: int(int.from_bytes(a, 'big', signed=True) - int.from_bytes(b, 'big', signed=True))
+                        .to_bytes(len(a), 'big', signed=True)):
                     return False
 
             elif opcode == opcodes.OP_BOOLAND:
@@ -780,11 +761,9 @@ class Script(object):
                 valid = check_signature(signature, public_key, hash_type, subscript, transaction, input_index)
 
                 if valid:
-                    stack.append(One)
+                    stack.append(b'\x01')
                 else:
-                    #print "PK", public_key.encode('hex')
-                    #print "S", signature.encode('hex'), input_index
-                    stack.append(Zero)
+                    stack.append(b'\x00')
 
             elif opcode == opcodes.OP_CHECKMULTISIG:
                 if len(stack) < 2: return False
@@ -831,12 +810,9 @@ class Script(object):
 
                 # did each signature have a matching public key?
                 if len(matched) == len(signatures):
-                    stack.append(One)
+                    stack.append(b'\x01')
                 else:
-                    #print "MULTISIG"
-                    #print "PK", public_key.encode('hex')
-                    #print "S", signature.encode('hex'), input_index
-                    stack.append(Zero)
+                    stack.append(b'\x00')
 
             elif opcode == opcodes.OP_RESERVED:
                 return False
@@ -854,11 +830,8 @@ class Script(object):
                 pass
 
             else:
-                #print "UNKNOWN OPCODE: %d" % opcode
                 return False
-
-        #print "STACK:"
-        #print "  " + "\n  ".join(str(i) for i in stack)
+        
         if len(stack) and bool(stack[-1]):
             return True
 
